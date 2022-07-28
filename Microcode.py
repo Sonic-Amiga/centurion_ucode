@@ -6,6 +6,7 @@ ALU_OP_MAP = ['{r}+{s}', '{s}-{r}', '{r}-{s}', '{r}|{s}', '{r}&{s}', '(~{r})&{s}
 ALU_MEM_DEST_MAP = ['', '', 'r{b}={f}', 'r{b}={f}', 'r{b}=({f})>>1', 'r{b}=({f})>>1', 'r{b}=({f})<<1', 'r{b} =({f})<<1']
 ALU_Q_DEST_MAP = ['Q={f}', ''     , ''     , ''     , 'Q>>=1', ''     , 'Q<<=1', '']
 ALU_OUT_MAP    = ['Y={f}', 'Y={f}', 'Y={a}', 'Y={f}', 'Y={f}', 'Y={f}', 'Y={f}', 'Y={f}']
+RESULT_MAP = ['', 'Result', 'RIndex', 'Level', 'PTIndex', 'MemAddr_Swap', 'Seq', 'CC']
 
 # Microcode ROMs order is denoted by a letter A-F.
 # They are arranged from MSB to LSB: ABCDEFH
@@ -28,7 +29,7 @@ class MicroCode(object):
         return (word >> start) & (~(-1 << size))
 
     def disassemble(self):
-        print('Addr D          ALU Op                           F         Seq Op')
+        print('Addr D          ALU Op                           F         Result Sel   Seq Op')
         for addr, word in enumerate(self.code):
             self.disassembleOne(addr, word)
         print()
@@ -102,7 +103,8 @@ class MicroCode(object):
         dpBus = self.getDPBus(word)
         aluOp = self.getALUCode(word)
         fBus = self.getFBus(word)
-        print(f'{addr:3x}: {dpBus:10s} {aluOp:32s} {fBus:9s} {jump}')
+        result = self.getResult(word)
+        print(f'{addr:3x}: {dpBus:10s} {aluOp:32s} {fBus:9s} {result:12s} {jump}')
 
     def getDPBus(self, word):
         d2d3 = self.getBits(word, 0, 4)
@@ -176,6 +178,11 @@ class MicroCode(object):
         else:
             str = f'{mem} {q} {y} {c}'
         return str.strip()
+
+    def getResult(self, word):
+        result_sel = self.getBits(word, 4, 3)
+        # Result select decoder U_E6
+        return RESULT_MAP[result_sel]
 
 if __name__ == '__main__':
     mc = MicroCode()
