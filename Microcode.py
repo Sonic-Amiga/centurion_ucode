@@ -4,9 +4,19 @@ from collections import defaultdict
 ALU_SRC_MAP = [['A', 'Q'], ['A', 'B'], ['0', 'Q'], ['0', 'B'], ['0', 'A'], ['D', 'A'], ['D', 'Q'], ['D', '0']]
 ALU_OP_MAP = ['{r}+{s}', '{s}-{r}', '{r}-{s}', '{r}|{s}', '{r}&{s}', '(~{r})&{s}', '{r}^{s}', '~({r}^{s})']
 ALU_MEM_DEST_MAP = ['', '', 'r{b}={f}', 'r{b}={f}', 'r{b}=({f})>>1', 'r{b}=({f})>>1', 'r{b}=({f})<<1', 'r{b} =({f})<<1']
-ALU_Q_DEST_MAP = ['Q = {f}', '', '', '', 'Q>>=1', '', 'Q<<=1', '']
-ALU_OUT_MAP = ['Y={f}', 'Y={f}', 'Y={a}', 'Y={f}', 'Y={f}', 'Y={f}', 'Y={f}', 'Y={f}']
+ALU_Q_DEST_MAP = ['Q={f}', ''     , ''     , ''     , 'Q>>=1', ''     , 'Q<<=1', '']
+ALU_OUT_MAP    = ['Y={f}', 'Y={f}', 'Y={a}', 'Y={f}', 'Y={f}', 'Y={f}', 'Y={f}', 'Y={f}']
 
+# Microcode ROMs order is denoted by a letter A-F.
+# They are arranged from MSB to LSB: ABCDEFH
+# Therefore starting bits are:
+# A 48
+# B 40
+# C 32
+# D 24
+# E 16
+# F 8
+# H 0
 class MicroCode(object):
     def __init__(self):
         with open('CodeROM.txt') as f:
@@ -18,6 +28,7 @@ class MicroCode(object):
         return (word >> start) & (~(-1 << size))
 
     def disassemble(self):
+        print('Addr D          ALU Op                           F         Seq Op')
         for addr, word in enumerate(self.code):
             self.disassembleOne(addr, word)
         print()
@@ -27,7 +38,7 @@ class MicroCode(object):
 
     def disassembleOne(self, addr, word):
         if word == 0:
-            print(f'{addr:3x} {word:14x} unused')
+            print(f'{addr:3x} {word:13x} unused')
             return
         seq0_din = self.getBits(word, 16, 4)
         seq0_s = ~self.getBits(word, 29, 2) & 3
@@ -37,6 +48,8 @@ class MicroCode(object):
         s0 = ~self.getBits(word, 31, 1) & 1
         p32 = self.getBits(word, 32, 1)
         p54 = self.getBits(word, 54, 1)
+        # S1, S0 lines of sequencers are derived using some extra logic
+        # (U_J6, U_K6, U_L6)
         s1 = ~(~(p54 & (~p32 & 1) & 1)) & 1
         seq2_s = s1 << 1 | s0
         case_ = self.getBits(word, 33, 1)
@@ -89,39 +102,39 @@ class MicroCode(object):
         dpBus = self.getDPBus(word)
         aluOp = self.getALUCode(word)
         fBus = self.getFBus(word)
-        print(f'{addr:3x}: {dpBus} {aluOp} {fBus} {jump}')
+        print(f'{addr:3x}: {dpBus:10s} {aluOp:32s} {fBus:9s} {jump}')
 
     def getDPBus(self, word):
         d2d3 = self.getBits(word, 0, 4)
         constant = ~self.getBits(word, 16, 8) & 0xff
         if d2d3 == 0:
-            return f'D=swap'
+            return f'swap'
         elif d2d3 == 1:
-            return f'D=reg_ram'
+            return f'reg_ram'
         elif d2d3 == 2:
-            return f'D=mar_hi'
+            return f'mar_hi'
         elif d2d3 == 3:
-            return f'D=mar_lo'
+            return f'mar_lo'
         elif d2d3 == 4:
-            return f'D=swap'
+            return f'swap'
         elif d2d3 == 5:
-            return f'D=reg_ram'
+            return f'reg_ram'
         elif d2d3 == 6:
-            return f'D=mar_hi'
+            return f'mar_hi'
         elif d2d3 == 7:
-            return f'D=mar_lo'
+            return f'mar_lo'
         elif d2d3 == 8:
             return ''
         elif d2d3 == 9:
-            return 'D=CC'
+            return 'CC'
         elif d2d3 == 10:
-            return 'D=bus_read'
+            return 'bus_read'
         elif d2d3 == 11:
-            return 'D=ILR?'
+            return 'ILR?'
         elif d2d3 == 12:
-            return 'D=dips?'
+            return 'dips?'
         elif d2d3 == 13:
-            return f'D={constant:x}'
+            return f'const:{constant:x}'
         elif d2d3 == 14:
             return ''
         elif d2d3 == 15:
@@ -130,8 +143,8 @@ class MicroCode(object):
     def getFBus(self, word):
         h11 = self.getBits(word, 10, 3)
         if h11 == 6:
-            return 'F=map_rom'
-        return 'F=Y'
+            return 'map_rom'
+        return 'Y'
 
     def getALUCode(self, word):
         aluA = self.getBits(word, 47, 4)
@@ -159,8 +172,10 @@ class MicroCode(object):
         if cout:
             c = 'C'
         if (aluOp == 0 or aluOp == 1 or aluOp == 2) and cin:
-            return f'{mem}+{cin} {q} {y}+{cin} {c}'
-        return f'{mem} {q} {y} {c}'
+            str = f'{mem}+{cin} {q} {y}+{cin} {c}'
+        else:
+            str = f'{mem} {q} {y} {c}'
+        return str.strip()
 
 if __name__ == '__main__':
     mc = MicroCode()
