@@ -60,7 +60,8 @@ class MicroCode(object):
         # F bus control
         h11     = self.getBits(word, 10, 3)
         e7      = self.getBits(word, 13, 2)
-        # TODO:   self.getBits(word, 15, 1) - uCode JSR enable, U_K9
+        # Sequencer jsr logic
+        jsr     = self.getBits(word, 15, 1)
         # Din for sequencers
         dest    = self.getBits(word, 16, 11)
         # Stack control for sequencers
@@ -96,7 +97,7 @@ class MicroCode(object):
         self.selects[s1s0] += 1
         next = addr + 1
 
-        seqOp  = self.getSeqCode(next, dest, s1s0, fe, pup, case_, cond)
+        seqOp  = self.getSeqCode(next, dest, s1s0, fe, pup, case_, cond, jsr)
         dpBus  = self.getDPBus(d2d3, dest)
         aluCIn = self.getALUCIn(u_f6)
         aluOp  = self.getALUCode(aluSrc, aluOp, aluDest, aluA, aluB)
@@ -108,7 +109,17 @@ class MicroCode(object):
 
         print(f'{addr:3x}: {dpBus:10s} {aluCIn:7s} {aluOp:32s} {fBus:12s} {fExtra:11s} {result:12s} {rbank:7s} {write:11s} {seqOp}')
 
-    def getSeqCode(self, next, dest, s1s0, fe, pup, case_, cond):
+    def getSeqCode(self, next, dest, s1s0, fe, pup, case_, cond, jsr):
+        if jsr == 0:
+            JSR_COND = ['Cycle', 'RegIdx & 0x11 == 0', 'RegIdx & 1', 'REG_MMIO', 'RegOrPageOut', 'DMARequest', 'MemFault', 'MultiINT']
+            cond = JSR_COND[dest & 7]
+            jsr_ = f'if {cond} jsr {dest:x}'
+            if s1s0 == 0x000:
+                return jsr_
+            jsr_ += ' else '
+        else:
+            jsr_ = ''
+
         if fe == 0 and pup == 1:
             push = f'push {next:x}; '
         else:
@@ -176,7 +187,7 @@ class MicroCode(object):
             if fe == 0 and pup == 0:
                 jump += '; pop'
 
-        return push + jump
+        return jsr_ + push + jump
 
     def getDPBus(self, d2d3, dest):
         # 'dest' is also used for constants, but these are inverted
