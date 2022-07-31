@@ -6,6 +6,7 @@ ALU_OP_MAP = ['{r}+{s}', '{s}-{r}', '{r}-{s}', '{r}|{s}', '{r}&{s}', '(~{r})&{s}
 ALU_MEM_DEST_MAP = ['', '', 'r{b}={f}', 'r{b}={f}', 'r{b}=({f})>>1', 'r{b}=({f})>>1', 'r{b}=({f})<<1', 'r{b} =({f})<<1']
 ALU_Q_DEST_MAP = ['Q={f}', ''     , ''     , ''     , 'Q>>=1', ''     , 'Q<<=1', '']
 ALU_OUT_MAP    = ['Y={f}', 'Y={f}', 'Y={a}', 'Y={f}', 'Y={f}', 'Y={f}', 'Y={f}', 'Y={f}']
+F_BUS_MAP = ['', 'BeginRead', 'BeginWrite', 'WorkAddr_HI', 'WorkAddr_Cnt', 'MemAddr_Cnt', 'MapROM', 'Swap']
 RESULT_MAP = ['', 'Result', 'RIndex', 'Level', 'PTIndex', 'Swap', 'AR', 'CC']
 
 # Microcode ROMs order is denoted by a letter A-F.
@@ -42,7 +43,7 @@ class MicroCode(object):
         return (word >> start) & (~(-1 << size))
 
     def disassemble(self):
-        print('Addr DP         ALU Op                           F         Result Sel   Seq Op')
+        print('Addr DP         ALU Op                           F            Result Sel   Seq Op')
         for addr, word in enumerate(self.code):
             self.disassembleOne(addr, word)
         print()
@@ -104,7 +105,7 @@ class MicroCode(object):
         fBus   = self.getFBus(h11)
         result = self.getResult(res)
 
-        print(f'{addr:3x}: {dpBus:10s} {aluOp:32s} {fBus:9s} {result:12s} {seqOp}')
+        print(f'{addr:3x}: {dpBus:10s} {aluOp:32s} {fBus:12s} {result:12s} {seqOp}')
 
     def getSeqCode(self, next, dest, s1s0, fe, pup, case_, cond):
         if fe == 0 and pup == 1:
@@ -212,10 +213,9 @@ class MicroCode(object):
         elif d2d3 == 15:
             return ''
 
+    # U_H11
     def getFBus(self, h11):
-        if h11 == 6:
-            return 'map_rom'
-        return 'Y'
+        return F_BUS_MAP[h11]
 
     def getALUCode(self, aluSrc, aluOp, aluDest, aluA, aluB):
         cin = 0
