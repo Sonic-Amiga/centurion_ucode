@@ -41,30 +41,56 @@ class MicroCode(object):
         if word == 0:
             print(f'{addr:3x} {word:13x} unused')
             return
-        seq0_din = self.getBits(word, 16, 4)
-        seq1_din = self.getBits(word, 20, 4)
-        seq2_din = self.getBits(word, 24, 3)
-        # S1, S0 lines of sequencers are derived using some extra logic
-        seq0_s = self.getBits(word, 29, 2) ^ 3 # U_L6A, U_L6D        
-        sh0    = self.getBits(word, 31, 1) ^ 1 # U_K6A
-        mw_c40 = self.getBits(word, 32, 1)
-        s21    = mw_c40 ^ 1                    # U_K6B
-        mw_a6  = self.getBits(word, 54, 1)
-        s11    = mw_a6 & (mw_c40 ^ 1) # U_J6C, U_K6D, U_K6C
-        # Switch statement and condition selector
-        case_ = self.getBits(word, 33, 1)
-        cond = self.getBits(word, 20, 4)
+
+        # DP bus control
+        d2d3    = self.getBits(word, 0, 4)
+        # Result control
+        res     = self.getBits(word, 4, 3)
+        # TODO:   self.getBits(word, 7, 3)
+        # F bus control
+        h11     = self.getBits(word, 10, 3)
+        # TODO:   self.getBits(word, 13, 3)
         # Din for sequencers
-        dest = (seq2_din << 8) | (seq1_din << 4) | seq0_din
-        # S inputs for sequencers
-        s1s0 = (s21 << 9) | (sh0 << 8) | (s11 << 5) | (sh0 << 4) | seq0_s
+        dest    = self.getBits(word, 16, 11)
         # Stack control for sequencers
-        fe  = self.getBits(word, 27, 1)
-        pup = self.getBits(word, 28, 1)
+        fe      = self.getBits(word, 27, 1)
+        pup     = self.getBits(word, 28, 1)
+        # S1, S0 lines of sequencers are derived using some extra logic
+        seq0_s  = self.getBits(word, 29, 2) ^ 3 # U_L6A, U_L6D        
+        sh0     = self.getBits(word, 31, 1) ^ 1 # U_K6A
+        mw_c40  = self.getBits(word, 32, 1)
+        # Switch statement and condition selector
+        case_   = self.getBits(word, 33, 1)
+        # Note that 'cond' reuses middle 4 bits of 'dest'
+        cond    = self.getBits(word, 20, 4)
+        # ALU control
+        aluSrc  = self.getBits(word, 34, 3)
+        aluOp   = self.getBits(word, 37, 3)
+        aluDest = self.getBits(word, 40, 3)
+        aluB    = self.getBits(word, 43, 4)
+        aluA    = self.getBits(word, 47, 4)
+        # TODO:   self.getBits(word, 51, 2)
+        # See below
+        mw_a6   = self.getBits(word, 54, 1)
+        # TODO:   self.getBits(word, 56, 2)
+
+        # S inputs for sequencers
+        s21  = mw_c40 ^ 1           # U_K6B
+        s11  = mw_a6 & (mw_c40 ^ 1) # U_J6C, U_K6D, U_K6C
+        s1s0 = (s21 << 9) | (sh0 << 8) | (s11 << 5) | (sh0 << 4) | seq0_s
 
         self.selects[s1s0] += 1
         next = addr + 1
 
+        seqOp  = self.getSeqCode(next, dest, s1s0, fe, pup, case_, cond)
+        dpBus  = self.getDPBus(d2d3, dest)
+        aluOp  = self.getALUCode(aluSrc, aluOp, aluDest, aluA, aluB)
+        fBus   = self.getFBus(h11)
+        result = self.getResult(res)
+
+        print(f'{addr:3x}: {dpBus:10s} {aluOp:32s} {fBus:9s} {result:12s} {seqOp}')
+
+    def getSeqCode(self, next, dest, s1s0, fe, pup, case_, cond):
         if fe == 0 and pup == 1:
             push = f'push {next:x}; '
         else:
@@ -132,16 +158,11 @@ class MicroCode(object):
             if fe == 0 and pup == 0:
                 jump += '; pop'
 
-        seq_op = push + jump
-        dpBus = self.getDPBus(word)
-        aluOp = self.getALUCode(word)
-        fBus = self.getFBus(word)
-        result = self.getResult(word)
-        print(f'{addr:3x}: {dpBus:10s} {aluOp:32s} {fBus:9s} {result:12s} {seq_op}')
+        return push + jump
 
-    def getDPBus(self, word):
-        d2d3 = self.getBits(word, 0, 4)
-        constant = ~self.getBits(word, 16, 8) & 0xff
+    def getDPBus(self, d2d3, dest):
+        # 'dest' is also used for constants, but these are inverted
+        constant = ~dest & 0xff
         if d2d3 == 0:
             return f'swap'
         elif d2d3 == 1:
@@ -175,18 +196,12 @@ class MicroCode(object):
         elif d2d3 == 15:
             return ''
 
-    def getFBus(self, word):
-        h11 = self.getBits(word, 10, 3)
+    def getFBus(self, h11):
         if h11 == 6:
             return 'map_rom'
         return 'Y'
 
-    def getALUCode(self, word):
-        aluA = self.getBits(word, 47, 4)
-        aluB = self.getBits(word, 43, 4)
-        aluSrc = self.getBits(word, 34, 3)
-        aluOp = self.getBits(word, 37, 3)
-        aluDest = self.getBits(word, 40, 3)
+    def getALUCode(self, aluSrc, aluOp, aluDest, aluA, aluB):
         cin = 0
         cout = 0
         r, s = ALU_SRC_MAP[aluSrc]
@@ -212,8 +227,7 @@ class MicroCode(object):
             str = f'{mem} {q} {y} {c}'
         return str.strip()
 
-    def getResult(self, word):
-        result_sel = self.getBits(word, 4, 3)
+    def getResult(self, result_sel):
         # Result select decoder U_E6
         return RESULT_MAP[result_sel]
 
