@@ -24,6 +24,19 @@ class MicroCode(object):
             lines = f.readlines()
             self.code = [int(line, 16) for line in lines]
             self.selects = defaultdict(int)
+        
+        # Parse opcode map and generate labels
+        with open('CPU-6309.txt') as f:
+            lines = f.readlines()
+            opc_map = [int(line, 16) for line in lines]
+            self.labels = {}
+            for opcode, addr in enumerate(opc_map):
+                # Two low nibbles come from AR, which comes from the map ROM;
+                # the third nibble is hardcoded to 0x1 (see addr 102)
+                addr += 0x100
+                if not addr in self.labels:
+                    self.labels[addr] = []
+                self.labels[addr].append(f'Op_{opcode:02x}')
 
     def getBits(self, word, start, size):
         return (word >> start) & (~(-1 << size))
@@ -38,6 +51,9 @@ class MicroCode(object):
             print(f'{name:3x}: {value}')
 
     def disassembleOne(self, addr, word):
+        if addr in self.labels:
+            for l in self.labels[addr]:
+                print(l + ':')
         if word == 0:
             print(f'{addr:3x} {word:13x} unused')
             return
