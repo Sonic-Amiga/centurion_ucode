@@ -1,14 +1,6 @@
 
 from collections import defaultdict
 
-ALU_SRC_MAP = [['A', 'Q'], ['A', 'B'], ['0', 'Q'], ['0', 'B'], ['0', 'A'], ['D', 'A'], ['D', 'Q'], ['D', '0']]
-ALU_OP_MAP = ['{r}+{s}', '{s}-{r}', '{r}-{s}', '{r}|{s}', '{r}&{s}', '(~{r})&{s}', '{r}^{s}', '~({r}^{s})']
-ALU_MEM_DEST_MAP = ['', '', 'r{b}={f}', 'r{b}={f}', 'r{b}=({f})>>1', 'r{b}=({f})>>1', 'r{b}=({f})<<1', 'r{b} =({f})<<1']
-ALU_Q_DEST_MAP = ['Q={f}', ''     , ''     , ''     , 'Q>>=1', ''     , 'Q<<=1', '']
-ALU_OUT_MAP    = ['Y={f}', 'Y={f}', 'Y={a}', 'Y={f}', 'Y={f}', 'Y={f}', 'Y={f}', 'Y={f}']
-F_BUS_MAP = ['', 'BeginRead', 'BeginWrite', 'WorkAddr_HI', 'WorkAddr_Cnt', 'MemAddr_Cnt', 'MapROM', 'Swap']
-RESULT_MAP = ['', 'Result', 'RIndex', 'Level', 'PTIndex', 'Swap', 'AR', 'CC']
-
 # Microcode ROMs order is denoted by a letter A-F.
 # They are arranged from MSB to LSB: ABCDEFH
 # Therefore starting bits are:
@@ -43,7 +35,7 @@ class MicroCode(object):
         return (word >> start) & (~(-1 << size))
 
     def disassemble(self):
-        print('Addr DP         ALU Op                           F            Result Sel   Seq Op')
+        print('Addr DP         ALU CIn ALU Op                           F            FExtra      Result Sel   RegBank Seq Op')
         for addr, word in enumerate(self.code):
             self.disassembleOne(addr, word)
         print()
@@ -56,17 +48,18 @@ class MicroCode(object):
             for l in self.labels[addr]:
                 print(l + ':')
         if word == 0:
-            print(f'{addr:3x} {word:13x} unused')
+            print(f'{addr:3x}: unused')
             return
 
         # DP bus control
         d2d3    = self.getBits(word, 0, 4)
         # Result control
         res     = self.getBits(word, 4, 3)
-        # TODO:   self.getBits(word, 7, 3)
+        # TODO:   self.getBits(word, 7, 3) - Write control, U_K11 and friends
         # F bus control
         h11     = self.getBits(word, 10, 3)
-        # TODO:   self.getBits(word, 13, 3)
+        e7      = self.getBits(word, 13, 2)
+        # TODO:   self.getBits(word, 15, 1) - uCode JSR enable, U_K9
         # Din for sequencers
         dest    = self.getBits(word, 16, 11)
         # Stack control for sequencers
@@ -86,10 +79,13 @@ class MicroCode(object):
         aluDest = self.getBits(word, 40, 3)
         aluB    = self.getBits(word, 43, 4)
         aluA    = self.getBits(word, 47, 4)
-        # TODO:   self.getBits(word, 51, 2)
-        # See below
+        # ALU CIn select
+        u_f6    = self.getBits(word, 51, 2)
+        # TODO:   self.getBits(word, 53, 1) - U_D101A, perhaps implicit AL/AH selector
+        # Extra bit for sequencer control, see below
         mw_a6   = self.getBits(word, 54, 1)
-        # TODO:   self.getBits(word, 56, 2)
+        # Register bank selector (explicit or CPL)
+        mw_a7   = self.getBits(word, 55, 1)
 
         # S inputs for sequencers
         s21  = mw_c40 ^ 1           # U_K6B
@@ -101,11 +97,14 @@ class MicroCode(object):
 
         seqOp  = self.getSeqCode(next, dest, s1s0, fe, pup, case_, cond)
         dpBus  = self.getDPBus(d2d3, dest)
+        aluCIn = self.getALUCIn(u_f6)
         aluOp  = self.getALUCode(aluSrc, aluOp, aluDest, aluA, aluB)
         fBus   = self.getFBus(h11)
+        fExtra = self.getFExtra(e7)
         result = self.getResult(res)
+        rbank  = self.getRegBank(mw_a7)
 
-        print(f'{addr:3x}: {dpBus:10s} {aluOp:32s} {fBus:12s} {result:12s} {seqOp}')
+        print(f'{addr:3x}: {dpBus:10s} {aluCIn:7s} {aluOp:32s} {fBus:12s} {fExtra:11s} {result:12s} {rbank:7s} {seqOp}')
 
     def getSeqCode(self, next, dest, s1s0, fe, pup, case_, cond):
         if fe == 0 and pup == 1:
@@ -215,9 +214,21 @@ class MicroCode(object):
 
     # U_H11
     def getFBus(self, h11):
+        F_BUS_MAP = ['', 'BeginRead', 'BeginWrite', 'WorkAddr_HI', 'WorkAddr_Cnt', 'MemAddr_Cnt', 'MapROM', 'Swap']
         return F_BUS_MAP[h11]
 
+    # U_E7
+    def getFExtra(self, u_e7):
+        EXTRA_F_MAP = ['', 'BUS_DELAY', 'AFL_WRITE', 'BusCycleEnd']
+        return EXTRA_F_MAP[u_e7]
+
     def getALUCode(self, aluSrc, aluOp, aluDest, aluA, aluB):
+        ALU_SRC_MAP = [['A', 'Q'], ['A', 'B'], ['0', 'Q'], ['0', 'B'], ['0', 'A'], ['D', 'A'], ['D', 'Q'], ['D', '0']]
+        ALU_OP_MAP = ['{r}+{s}', '{s}-{r}', '{r}-{s}', '{r}|{s}', '{r}&{s}', '(~{r})&{s}', '{r}^{s}', '~({r}^{s})']
+        ALU_MEM_DEST_MAP = ['', '', 'r{b}={f}', 'r{b}={f}', 'r{b}=({f})>>1', 'r{b}=({f})>>1', 'r{b}=({f})<<1', 'r{b} =({f})<<1']
+        ALU_Q_DEST_MAP = ['Q={f}', ''     , ''     , ''     , 'Q>>=1', ''     , 'Q<<=1', '']
+        ALU_OUT_MAP    = ['Y={f}', 'Y={f}', 'Y={a}', 'Y={f}', 'Y={f}', 'Y={f}', 'Y={f}', 'Y={f}']
+
         cin = 0
         cout = 0
         r, s = ALU_SRC_MAP[aluSrc]
@@ -245,7 +256,17 @@ class MicroCode(object):
 
     def getResult(self, result_sel):
         # Result select decoder U_E6
+        RESULT_MAP = ['', 'Result', 'RegIdx', 'CPL', 'PTIdx', 'Swap', 'AR', 'CC']
         return RESULT_MAP[result_sel]
+
+    # U_F6
+    def getALUCIn(self, u_f6):
+        CARRY_MAP = ['0', '1', 'AFL.C', '0']
+        return CARRY_MAP[u_f6]
+
+    # U_C14
+    def getRegBank(self, mw_a7):
+        return "CPL" if mw_a7 else "RegIdx"
 
 if __name__ == '__main__':
     mc = MicroCode()
