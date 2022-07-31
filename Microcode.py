@@ -35,7 +35,7 @@ class MicroCode(object):
         return (word >> start) & (~(-1 << size))
 
     def disassemble(self):
-        print('Addr DP         ALU CIn ALU Op                           F            FExtra      Result Sel   RegBank Seq Op')
+        print('Addr DP         ALUCIn  ALUOp                            F            FExtra      ResultSel    RegBank WriteCtl    SeqOp')
         for addr, word in enumerate(self.code):
             self.disassembleOne(addr, word)
         print()
@@ -55,7 +55,8 @@ class MicroCode(object):
         d2d3    = self.getBits(word, 0, 4)
         # Result control
         res     = self.getBits(word, 4, 3)
-        # TODO:   self.getBits(word, 7, 3) - Write control, U_K11 and friends
+        # Write control
+        k11     = self.getBits(word, 7, 3)
         # F bus control
         h11     = self.getBits(word, 10, 3)
         e7      = self.getBits(word, 13, 2)
@@ -103,8 +104,9 @@ class MicroCode(object):
         fExtra = self.getFExtra(e7)
         result = self.getResult(res)
         rbank  = self.getRegBank(mw_a7)
+        write  = self.getWriteControl(k11)
 
-        print(f'{addr:3x}: {dpBus:10s} {aluCIn:7s} {aluOp:32s} {fBus:12s} {fExtra:11s} {result:12s} {rbank:7s} {seqOp}')
+        print(f'{addr:3x}: {dpBus:10s} {aluCIn:7s} {aluOp:32s} {fBus:12s} {fExtra:11s} {result:12s} {rbank:7s} {write:11s} {seqOp}')
 
     def getSeqCode(self, next, dest, s1s0, fe, pup, case_, cond):
         if fe == 0 and pup == 1:
@@ -267,6 +269,13 @@ class MicroCode(object):
     # U_C14
     def getRegBank(self, mw_a7):
         return "CPL" if mw_a7 else "RegIdx"
+
+    # U_K11, U_K12C, U_H13B
+    def getWriteControl(self, k11):
+         WRITE_CONTROL = ['', 'DMAEnd', 'M13', 'BusCtl', 'REGF', 'PTRAM', 'WorkAddr_LO', 'DataWTClock']
+         # TODO: Decode M13, uses numeric value from aluB
+         # TODO: BusCtl uses numeric value from aluB
+         return WRITE_CONTROL[k11]
 
 if __name__ == '__main__':
     mc = MicroCode()
