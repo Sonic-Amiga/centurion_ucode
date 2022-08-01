@@ -35,7 +35,7 @@ class MicroCode(object):
         return (word >> start) & (~(-1 << size))
 
     def disassemble(self):
-        print('Addr DP         ALUCIn  ALUOp                            F            FExtra      ResultSel    RegBank WriteCtl    SeqOp')
+        print('Addr DP         ALUCIn  ALUOp                            F                BusControl     BusExtra    RegBank WriteCtl       R16_MSB SeqOp')
         for addr, word in enumerate(self.code):
             self.disassembleOne(addr, word)
         print()
@@ -53,11 +53,11 @@ class MicroCode(object):
 
         # DP bus control
         d2d3    = self.getBits(word, 0, 4)
-        # Result control
-        res     = self.getBits(word, 4, 3)
+        # F bus control
+        e6      = self.getBits(word, 4, 3)
         # Write control
         k11     = self.getBits(word, 7, 3)
-        # F bus control
+        # Bus control function
         h11     = self.getBits(word, 10, 3)
         e7      = self.getBits(word, 13, 2)
         # Sequencer jsr logic
@@ -83,7 +83,8 @@ class MicroCode(object):
         aluA    = self.getBits(word, 47, 4)
         # ALU CIn select
         u_f6    = self.getBits(word, 51, 2)
-        # TODO:   self.getBits(word, 53, 1) - U_D101A, perhaps implicit AL/AH selector
+        # U_D101A, MSB access for register pair
+        r16_msb = self.getBits(word, 53, 1)
         # Extra bit for sequencer control, see below
         mw_a6   = self.getBits(word, 54, 1)
         # Register bank selector (explicit or CPL)
@@ -101,13 +102,14 @@ class MicroCode(object):
         dpBus  = self.getDPBus(d2d3, dest)
         aluCIn = self.getALUCIn(u_f6)
         aluOp  = self.getALUCode(aluSrc, aluOp, aluDest, aluA, aluB)
-        fBus   = self.getFBus(h11)
-        fExtra = self.getFExtra(e7)
-        result = self.getResult(res)
+        bus    = self.getBusCtl(h11)
+        extra  = self.getBusExtra(e7)
+        fBus   = self.getFBus(e6)
         rbank  = self.getRegBank(mw_a7)
         write  = self.getWriteControl(k11)
+        msb    = 'MSB' if r16_msb else ''
 
-        print(f'{addr:3x}: {dpBus:10s} {aluCIn:7s} {aluOp:32s} {fBus:12s} {fExtra:11s} {result:12s} {rbank:7s} {write:11s} {seqOp}')
+        print(f'{addr:3x}: {dpBus:10s} {aluCIn:7s} {aluOp:32s} {fBus:16s} {bus:14s} {extra:11s} {rbank:7s} {write:14s} {msb:7s} {seqOp}')
 
     def getSeqCode(self, next, dest, s1s0, fe, pup, case_, cond, jsr):
         if jsr == 0:
@@ -225,16 +227,6 @@ class MicroCode(object):
         elif d2d3 == 15:
             return ''
 
-    # U_H11
-    def getFBus(self, h11):
-        F_BUS_MAP = ['', 'BeginRead', 'BeginWrite', 'WorkAddr_HI', 'WorkAddr_Cnt', 'MemAddr_Cnt', 'MapROM', 'Swap']
-        return F_BUS_MAP[h11]
-
-    # U_E7
-    def getFExtra(self, u_e7):
-        EXTRA_F_MAP = ['', 'BUS_DELAY', 'AFL_WRITE', 'BusCycleEnd']
-        return EXTRA_F_MAP[u_e7]
-
     def getALUCode(self, aluSrc, aluOp, aluDest, aluA, aluB):
         ALU_SRC_MAP = [['A', 'Q'], ['A', 'B'], ['0', 'Q'], ['0', 'B'], ['0', 'A'], ['D', 'A'], ['D', 'Q'], ['D', '0']]
         ALU_OP_MAP = ['{r}+{s}', '{s}-{r}', '{r}-{s}', '{r}|{s}', '{r}&{s}', '(~{r})&{s}', '{r}^{s}', '~({r}^{s})']
@@ -267,10 +259,10 @@ class MicroCode(object):
             str = f'{mem} {q} {y} {c}'
         return str.strip()
 
-    def getResult(self, result_sel):
-        # Result select decoder U_E6
-        RESULT_MAP = ['', 'Result', 'RegIdx', 'CPL', 'PTIdx', 'Swap', 'AR', 'CC']
-        return RESULT_MAP[result_sel]
+    # U_E6
+    def getFBus(self, val):
+        RESULT_MAP = ['', 'Result<=F', 'RegIdx<=F', 'CPL<=F', 'PTIdx<=F', 'WorkAddr<=Result', 'AR<=F', 'CC<=F']
+        return RESULT_MAP[val]
 
     # U_F6
     def getALUCIn(self, u_f6):
@@ -281,9 +273,19 @@ class MicroCode(object):
     def getRegBank(self, mw_a7):
         return "CPL" if mw_a7 else "RegIdx"
 
+    # U_H11
+    def getBusCtl(self, h11):
+        BUS_MAP = ['', 'BeginRead', 'BeginWrite', 'WorkAddr_LD_HI', 'WorkAddr_Cnt', 'MemAddr_Cnt', 'MapROM', 'Swap']
+        return BUS_MAP[h11]
+
+    # U_E7
+    def getBusExtra(self, u_e7):
+        EXTRA_F_MAP = ['', 'BUS_DELAY', 'AFL_WRITE', 'BusCycleEnd']
+        return EXTRA_F_MAP[u_e7]
+
     # U_K11, U_K12C, U_H13B
     def getWriteControl(self, k11):
-         WRITE_CONTROL = ['', 'DMAEnd', 'M13', 'BusCtl', 'REGF', 'PTRAM', 'WorkAddr_LO', 'DataWTClock']
+         WRITE_CONTROL = ['', 'DMAEnd', 'M13', 'BusCtl', 'REGF<=Result', 'PTRAM<=Result', 'WorkAddr_LD_LO', 'DataWTClock']
          # TODO: Decode M13, uses numeric value from aluB
          # TODO: BusCtl uses numeric value from aluB
          return WRITE_CONTROL[k11]
