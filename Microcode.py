@@ -35,7 +35,7 @@ class MicroCode(object):
         return (word >> start) & (~(-1 << size))
 
     def disassemble(self):
-        print('Addr DP         ALUCIn    ALUOp                                    F                                                            BusControl     BusExtra    RegBank WriteCtl         R16_LSB SeqOp')
+        print('Addr DP             ALUCIn    ALUOp                                    F                                                BusControl     BusExtra    WriteCtl            R16_LSB SeqOp')
         for addr, word in enumerate(self.code):
             self.disassembleOne(addr, word)
         print()
@@ -99,17 +99,16 @@ class MicroCode(object):
         next = addr + 1
 
         seqCode = self.getSeqCode(next, dest, s1s0, fe, pup, case_, cond, jsr)
-        dpBus   = self.getDPBus(d2d3, dest)
+        dpBus   = self.getDPBus(d2d3, dest, mw_a7)
         aluCIn  = self.getALUCIn(u_f6)
         aluCode = self.getALUCode(aluSrc, aluOp, aluDest, aluA, aluB, u_f6)
         bus     = self.getBusCtl(h11)
         extra   = self.getBusExtra(e7)
         fBus    = self.getFBus(e6, dest)
-        rbank   = self.getRegBank(mw_a7)
-        write   = self.getWriteControl(k11, aluB)
+        write   = self.getWriteControl(k11, aluB, mw_a7)
         msb     = 'LSB' if r16_lsb else ''
 
-        print(f'{addr:3x}: {dpBus:10s} {aluCIn:9s} {aluCode:40s} {fBus:60s} {bus:14s} {extra:11s} {rbank:7s} {write:16s} {msb:7s} {seqCode}')
+        print(f'{addr:3x}: {dpBus:14s} {aluCIn:9s} {aluCode:40s} {fBus:48s} {bus:14s} {extra:11s} {write:19s} {msb:7s} {seqCode}')
 
     def getSeqCode(self, next, dest, s1s0, fe, pup, case_, cond, jsr):
         if jsr == 0:
@@ -191,13 +190,13 @@ class MicroCode(object):
 
         return jsr_ + push + jump
 
-    def getDPBus(self, d2d3, dest):
+    def getDPBus(self, d2d3, dest, mw_a7):
         # 'dest' is also used for constants, but these are inverted
         constant = ~dest & 0xff
         if d2d3 == 0:
             return f'swap'
         elif d2d3 == 1:
-            return f'reg_ram'
+            return self.getRegName(mw_a7)
         elif d2d3 == 2:
             return f'mar_hi'
         elif d2d3 == 3:
@@ -205,7 +204,7 @@ class MicroCode(object):
         elif d2d3 == 4:
             return f'swap'
         elif d2d3 == 5:
-            return f'reg_ram'
+            return self.getRegName(mw_a7)
         elif d2d3 == 6:
             return f'mar_hi'
         elif d2d3 == 7:
@@ -213,7 +212,7 @@ class MicroCode(object):
         elif d2d3 == 8:
             return ''
         elif d2d3 == 9:
-            return 'CC'
+            return 'CCR'
         elif d2d3 == 10:
             return 'bus_read'
         elif d2d3 == 11:
@@ -282,36 +281,36 @@ class MicroCode(object):
 
             return 'CCR<={' + f'V={zero},M={sign},F={fault},L={link}' + '}'
 
-        RESULT_MAP = ['', 'Result<=F', 'RegIdx<=F', 'CPL<=F', 'PTIdx<=F', 'WorkAddr<=Result', 'AR<=F', 'CCR_EN']
+        RESULT_MAP = ['', 'RES<=F', 'RIdx<=F', 'CPL<=F', 'PTIdx<=F', 'WorkAddr<=RES', 'AR<=F', 'CCR_EN']
         return RESULT_MAP[val]
 
     # U_F6
     def getALUCIn(self, u_f6):
-        CARRY_MAP = ['0', '1', 'AFL.CARRY', '0']
+        CARRY_MAP = ['0', '1', 'AFL.C', '0']
         return CARRY_MAP[u_f6]
 
     # U_H6
     def getShiftSel(self, shift_up, u_f6):
         if shift_up:
             # Left shift, select which signal will be shifted in at LSB
-            SHIFT_Q0_MAP = ['0', 'AFL.CARRY', 'ALU.SIGN', '1']
+            SHIFT_Q0_MAP = ['0', 'AFL.C', 'ALU.S', '1']
             val = SHIFT_Q0_MAP[u_f6]
             signal = 'Q0'
         else:
             # Right shift, select which signal will be shifted in at MSB
-            SHIFT_RAM7_MAP = ['ALU.SIGN', 'AFL.CARRY', 'ALU.Q0', 'ALU.CARRY']
+            SHIFT_RAM7_MAP = ['ALU.S', 'AFL.C', 'ALU.Q0', 'ALU.C']
             val = SHIFT_RAM7_MAP[u_f6]
             signal = 'RAM7'
         return f'{signal}={val}'
 
     # U_J12.a
     def getSignSel(self, sel):
-        SIGN_TABLE = ['CCR.M', 'AFL.SIGN', 'Result.D6', 'AFL.SIGN']
+        SIGN_TABLE = ['CCR.M', 'AFL.S', 'RES.D6', 'AFL.S']
         return SIGN_TABLE[sel]
 
     # U_J12.b
     def getZeroSel(self, sel):
-        ZERO_TABLE = ['CCR.V', 'AFL.ZERO', 'Result.D7', 'AFL.ZERO & AFL.LZERO']
+        ZERO_TABLE = ['CCR.V', 'AFL.Z', 'RES.D7', 'AFL.Z&AFL.LZ']
         return ZERO_TABLE[sel]
 
     # U_J10
@@ -319,7 +318,7 @@ class MicroCode(object):
         if enable:
             return '0'
         else:
-            LINK_TABLE = ['CCR.L', '/CCR.L', 'AFL.CARRY', '1', 'Result.D4', 'ALU.SHIFT_RAM7', 'ALU_SHIFT_RAM0_Q7', 'ALU.SHIFT_Q0']
+            LINK_TABLE = ['CCR.L', '/CCR.L', 'AFL.C', '1', 'RES.D4', 'ALU.SHIFT_RAM7', 'ALU_SHIFT_RAM0_Q7', 'ALU.SHIFT_Q0']
             return LINK_TABLE[sel]
 
     #U_J11
@@ -327,12 +326,15 @@ class MicroCode(object):
         if enable:
             return '0'
         else:
-            FAULT_TABLE = ['Result.D5', '1', 'CCR.F', 'AFL.OVER']
+            FAULT_TABLE = ['RES.D5', '1', 'CCR.F', 'AFL.OVER']
             return FAULT_TABLE[sel]
-
+        
     # U_C14
-    def getRegBank(self, mw_a7):
-        return "CPL" if mw_a7 else "RegIdx"
+    def getRegName(self, mw_a7):
+        if mw_a7:
+            return 'R[RIdx.L][CPL]'
+        else:
+            return 'R[RIdx]'
 
     # U_H11
     def getBusCtl(self, h11):
@@ -345,16 +347,19 @@ class MicroCode(object):
         return EXTRA_F_MAP[u_e7]
 
     # U_K11, U_K12C, U_H13B
-    def getWriteControl(self, k11, aluB):
+    def getWriteControl(self, k11, aluB, mw_a7):
         if k11 == 2: # U_M13
             M13_MAP = ['SysCtl0_DMA', 'SysCtl1_DMA', 'RTC_INT_EN', 'PROM_Disable', 'RUN', '/RTC_INT_Reset', 'ABT_LED', 'INT_ACK']
             return self.getDemuxedControl(M13_MAP, aluB)
         if k11 == 3: # U_F11
             F11_MAP = ['INT_ENABLE', '/AddrHToSys', '/AddrCount_EN', 'Addr_U/D', 'DMAAddrCtl', 'ParitySel', 'MemFault_EN', 'DMAEnable']
             return self.getDemuxedControl(F11_MAP, aluB)
+        if k11 == 4: # Write from result register to register file
+            reg = self.getRegName(mw_a7)
+            return f'{reg}<=RES'
 
-        # M13 and F11 are handled above
-        WRITE_CONTROL = ['', 'DMAEnd', 'M13', 'F11', 'REGF<=Result', 'PTRAM<=Result', 'WorkAddr_LD_LO', 'DataWTClock']
+        # M13, F11 and REGS are handled above
+        WRITE_CONTROL = ['', 'DMAEnd', 'M13', 'F11', 'REGS', 'PTRAM<=RES', 'WorkAddr_LD_LO', 'DataWTClock']
         # TODO: BusCtl uses numeric value from aluB (U_F11)
         return WRITE_CONTROL[k11]
 
