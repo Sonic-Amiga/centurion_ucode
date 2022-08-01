@@ -35,7 +35,7 @@ class MicroCode(object):
         return (word >> start) & (~(-1 << size))
 
     def disassemble(self):
-        print('Addr DP         ALUCIn    ALUOp                                    F                                                            BusControl     BusExtra    RegBank WriteCtl       R16_LSB SeqOp')
+        print('Addr DP         ALUCIn    ALUOp                                    F                                                            BusControl     BusExtra    RegBank WriteCtl         R16_LSB SeqOp')
         for addr, word in enumerate(self.code):
             self.disassembleOne(addr, word)
         print()
@@ -109,7 +109,7 @@ class MicroCode(object):
         write   = self.getWriteControl(k11, aluB)
         msb     = 'LSB' if r16_lsb else ''
 
-        print(f'{addr:3x}: {dpBus:10s} {aluCIn:9s} {aluCode:40s} {fBus:60s} {bus:14s} {extra:11s} {rbank:7s} {write:14s} {msb:7s} {seqCode}')
+        print(f'{addr:3x}: {dpBus:10s} {aluCIn:9s} {aluCode:40s} {fBus:60s} {bus:14s} {extra:11s} {rbank:7s} {write:16s} {msb:7s} {seqCode}')
 
     def getSeqCode(self, next, dest, s1s0, fe, pup, case_, cond, jsr):
         if jsr == 0:
