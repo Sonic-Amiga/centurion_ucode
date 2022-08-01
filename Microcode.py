@@ -35,7 +35,7 @@ class MicroCode(object):
         return (word >> start) & (~(-1 << size))
 
     def disassemble(self):
-        print('Addr DP         ALUCIn  ALUOp                            F                BusControl     BusExtra    RegBank WriteCtl       R16_MSB SeqOp')
+        print('Addr DP         ALUCIn    ALUOp                                    F                                                            BusControl     BusExtra    RegBank WriteCtl       R16_LSB SeqOp')
         for addr, word in enumerate(self.code):
             self.disassembleOne(addr, word)
         print()
@@ -81,10 +81,10 @@ class MicroCode(object):
         aluDest = self.getBits(word, 40, 3)
         aluB    = self.getBits(word, 43, 4)
         aluA    = self.getBits(word, 47, 4)
-        # ALU CIn select
+        # ALU.CARRY_IN and shift select
         u_f6    = self.getBits(word, 51, 2)
-        # U_D101A, MSB access for register pair
-        r16_msb = self.getBits(word, 53, 1)
+        # U_D101A, LSB access for 16-bit register
+        r16_lsb = self.getBits(word, 53, 1)
         # Extra bit for sequencer control, see below
         mw_a6   = self.getBits(word, 54, 1)
         # Register bank selector (explicit or CPL)
@@ -98,18 +98,18 @@ class MicroCode(object):
         self.selects[s1s0] += 1
         next = addr + 1
 
-        seqOp  = self.getSeqCode(next, dest, s1s0, fe, pup, case_, cond, jsr)
-        dpBus  = self.getDPBus(d2d3, dest)
-        aluCIn = self.getALUCIn(u_f6)
-        aluOp  = self.getALUCode(aluSrc, aluOp, aluDest, aluA, aluB)
-        bus    = self.getBusCtl(h11)
-        extra  = self.getBusExtra(e7)
-        fBus   = self.getFBus(e6)
-        rbank  = self.getRegBank(mw_a7)
-        write  = self.getWriteControl(k11)
-        msb    = 'MSB' if r16_msb else ''
+        seqCode = self.getSeqCode(next, dest, s1s0, fe, pup, case_, cond, jsr)
+        dpBus   = self.getDPBus(d2d3, dest)
+        aluCIn  = self.getALUCIn(u_f6)
+        aluCode = self.getALUCode(aluSrc, aluOp, aluDest, aluA, aluB, u_f6)
+        bus     = self.getBusCtl(h11)
+        extra   = self.getBusExtra(e7)
+        fBus    = self.getFBus(e6, dest)
+        rbank   = self.getRegBank(mw_a7)
+        write   = self.getWriteControl(k11, aluB)
+        msb     = 'LSB' if r16_lsb else ''
 
-        print(f'{addr:3x}: {dpBus:10s} {aluCIn:7s} {aluOp:32s} {fBus:16s} {bus:14s} {extra:11s} {rbank:7s} {write:14s} {msb:7s} {seqOp}')
+        print(f'{addr:3x}: {dpBus:10s} {aluCIn:9s} {aluCode:40s} {fBus:60s} {bus:14s} {extra:11s} {rbank:7s} {write:14s} {msb:7s} {seqCode}')
 
     def getSeqCode(self, next, dest, s1s0, fe, pup, case_, cond, jsr):
         if jsr == 0:
@@ -227,12 +227,12 @@ class MicroCode(object):
         elif d2d3 == 15:
             return ''
 
-    def getALUCode(self, aluSrc, aluOp, aluDest, aluA, aluB):
+    def getALUCode(self, aluSrc, aluOp, aluDest, aluA, aluB, u_f6):
         ALU_SRC_MAP = [['A', 'Q'], ['A', 'B'], ['0', 'Q'], ['0', 'B'], ['0', 'A'], ['D', 'A'], ['D', 'Q'], ['D', '0']]
         ALU_OP_MAP = ['{r}+{s}', '{s}-{r}', '{r}-{s}', '{r}|{s}', '{r}&{s}', '(~{r})&{s}', '{r}^{s}', '~({r}^{s})']
-        ALU_MEM_DEST_MAP = ['', '', 'r{b}={f}', 'r{b}={f}', 'r{b}=({f})>>1', 'r{b}=({f})>>1', 'r{b}=({f})<<1', 'r{b} =({f})<<1']
-        ALU_Q_DEST_MAP = ['Q={f}', ''     , ''     , ''     , 'Q>>=1', ''     , 'Q<<=1', '']
-        ALU_OUT_MAP    = ['Y={f}', 'Y={f}', 'Y={a}', 'Y={f}', 'Y={f}', 'Y={f}', 'Y={f}', 'Y={f}']
+        ALU_MEM_DEST_MAP = [''     , ''     , 'r{b}={f}', 'r{b}={f}', 'r{b}=({f})>>1', 'r{b}=({f})>>1', 'r{b}=({f})<<1', 'r{b} =({f})<<1']
+        ALU_Q_DEST_MAP   = ['Q={f}', ''     , ''        , ''        , 'Q>>=1'        , ''             , 'Q<<=1'        , ''              ]
+        ALU_OUT_MAP      = ['Y={f}', 'Y={f}', 'Y={a}'   , 'Y={f}'   , 'Y={f}'        , 'Y={f}'        , 'Y={f}'        , 'Y={f}'         ]
 
         cin = 0
         cout = 0
@@ -257,17 +257,78 @@ class MicroCode(object):
             str = f'{mem}+{cin} {q} {y}+{cin} {c}'
         else:
             str = f'{mem} {q} {y} {c}'
-        return str.strip()
+
+        str = str.strip()
+
+        if aluDest >= 4:
+            str += ' ' + self.getShiftSel(aluDest & 2, u_f6)
+            
+        return str
 
     # U_E6
-    def getFBus(self, val):
-        RESULT_MAP = ['', 'Result<=F', 'RegIdx<=F', 'CPL<=F', 'PTIdx<=F', 'WorkAddr<=Result', 'AR<=F', 'CC<=F']
+    def getFBus(self, val, dest):
+        if val == 7:
+            # CCR write uses 'dest' as flag selector
+            sz_sel       = self.getBits(dest, 0, 2)
+            fault_enable = self.getBits(dest, 2, 1)
+            fault_sel    = self.getBits(dest, 3, 2)
+            link_enable  = self.getBits(dest, 5, 1)
+            link_sel     = self.getBits(dest, 6, 3)
+
+            sign  = self.getSignSel(sz_sel)
+            zero  = self.getZeroSel(sz_sel)
+            link  = self.getLinkSel(link_enable, link_sel)
+            fault = self.getFaultSel(fault_enable, fault_sel)
+
+            return 'CCR<={' + f'V={zero},M={sign},F={fault},L={link}' + '}'
+
+        RESULT_MAP = ['', 'Result<=F', 'RegIdx<=F', 'CPL<=F', 'PTIdx<=F', 'WorkAddr<=Result', 'AR<=F', 'CCR_EN']
         return RESULT_MAP[val]
 
     # U_F6
     def getALUCIn(self, u_f6):
-        CARRY_MAP = ['0', '1', 'AFL.C', '0']
+        CARRY_MAP = ['0', '1', 'AFL.CARRY', '0']
         return CARRY_MAP[u_f6]
+
+    # U_H6
+    def getShiftSel(self, shift_up, u_f6):
+        if shift_up:
+            # Left shift, select which signal will be shifted in at LSB
+            SHIFT_Q0_MAP = ['0', 'AFL.CARRY', 'ALU.SIGN', '1']
+            val = SHIFT_Q0_MAP[u_f6]
+            signal = 'Q0'
+        else:
+            # Right shift, select which signal will be shifted in at MSB
+            SHIFT_RAM7_MAP = ['ALU.SIGN', 'AFL.CARRY', 'ALU.Q0', 'ALU.CARRY']
+            val = SHIFT_RAM7_MAP[u_f6]
+            signal = 'RAM7'
+        return f'{signal}={val}'
+
+    # U_J12.a
+    def getSignSel(self, sel):
+        SIGN_TABLE = ['CCR.M', 'AFL.SIGN', 'Result.D6', 'AFL.SIGN']
+        return SIGN_TABLE[sel]
+
+    # U_J12.b
+    def getZeroSel(self, sel):
+        ZERO_TABLE = ['CCR.V', 'AFL.ZERO', 'Result.D7', 'AFL.ZERO & AFL.LZERO']
+        return ZERO_TABLE[sel]
+
+    # U_J10
+    def getLinkSel(self, enable, sel):
+        if enable:
+            return '0'
+        else:
+            LINK_TABLE = ['CCR.L', '/CCR.L', 'AFL.CARRY', '1', 'Result.D4', 'ALU.SHIFT_RAM7', 'ALU_SHIFT_RAM0_Q7', 'ALU.SHIFT_Q0']
+            return LINK_TABLE[sel]
+
+    #U_J11
+    def getFaultSel(self, enable, sel):
+        if enable:
+            return '0'
+        else:
+            FAULT_TABLE = ['Result.D5', '1', 'CCR.F', 'AFL.OVER']
+            return FAULT_TABLE[sel]
 
     # U_C14
     def getRegBank(self, mw_a7):
@@ -275,20 +336,32 @@ class MicroCode(object):
 
     # U_H11
     def getBusCtl(self, h11):
-        BUS_MAP = ['', 'BeginRead', 'BeginWrite', 'WorkAddr_LD_HI', 'WorkAddr_Cnt', 'MemAddr_Cnt', 'MapROM', 'Swap']
+        BUS_MAP = ['', 'BeginRead', 'BeginWrite', 'WorkAddr_LD_HI', 'WorkAddr_Cnt', 'MemAddr_Cnt', 'MAPROM_SEL', 'Swap']
         return BUS_MAP[h11]
 
     # U_E7
     def getBusExtra(self, u_e7):
-        EXTRA_F_MAP = ['', 'BUS_DELAY', 'AFL_WRITE', 'BusCycleEnd']
+        EXTRA_F_MAP = ['', 'BUS_DELAY', 'AFL.EN', 'BusCycleEnd']
         return EXTRA_F_MAP[u_e7]
 
     # U_K11, U_K12C, U_H13B
-    def getWriteControl(self, k11):
-         WRITE_CONTROL = ['', 'DMAEnd', 'M13', 'BusCtl', 'REGF<=Result', 'PTRAM<=Result', 'WorkAddr_LD_LO', 'DataWTClock']
-         # TODO: Decode M13, uses numeric value from aluB
-         # TODO: BusCtl uses numeric value from aluB
-         return WRITE_CONTROL[k11]
+    def getWriteControl(self, k11, aluB):
+        if k11 == 2: # U_M13
+            M13_MAP = ['SysCtl0_DMA', 'SysCtl1_DMA', 'RTC_INT_EN', 'PROM_Disable', 'RUN', '/RTC_INT_Reset', 'ABT_LED', 'INT_ACK']
+            return self.getDemuxedControl(M13_MAP, aluB)
+        if k11 == 3: # U_F11
+            F11_MAP = ['INT_ENABLE', '/AddrHToSys', '/AddrCount_EN', 'Addr_U/D', 'DMAAddrCtl', 'ParitySel', 'MemFault_EN', 'DMAEnable']
+            return self.getDemuxedControl(F11_MAP, aluB)
+
+        # M13 and F11 are handled above
+        WRITE_CONTROL = ['', 'DMAEnd', 'M13', 'F11', 'REGF<=Result', 'PTRAM<=Result', 'WorkAddr_LD_LO', 'DataWTClock']
+        # TODO: BusCtl uses numeric value from aluB (U_F11)
+        return WRITE_CONTROL[k11]
+
+    def getDemuxedControl(self, map_, aluB):
+        bit  = aluB & 1
+        line = map_[(aluB >> 1) & 7]
+        return f'{line}<={bit}'
 
 if __name__ == '__main__':
     mc = MicroCode()
