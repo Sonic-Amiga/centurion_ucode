@@ -3,14 +3,15 @@ from collections import defaultdict
 
 # Microcode ROMs order is denoted by a letter A-F.
 # They are arranged from MSB to LSB: ABCDEFH
+# Note that this order doesn't correspond physical positions (and designators)
 # Therefore starting bits are:
-# A 48
-# B 40
-# C 32
-# D 24
-# E 16
-# F 8
-# H 0
+# A 48 MWK2
+# B 40 MWF2
+# C 32 MWH2
+# D 24 MWL2
+# E 16 MWM2
+# F 8  MWJ2
+# H 0  MWE2
 class MicroCode(object):
     def __init__(self):
         with open('CodeROM.txt') as f:
@@ -122,7 +123,7 @@ class MicroCode(object):
             jsr_ = ''
 
         if fe == 0 and pup == 1:
-            push = f'push {next:x}; '
+            push = f'push {next:x}'
         else:
             push = ''
 
@@ -157,7 +158,11 @@ class MicroCode(object):
                     const_mask |= mask
 
             if case_ == 1:
-                jump = f'jump {target:x}'
+                if push != '':
+                    jump = f'jsr {target:x}' # push; jmp
+                    push = ''
+                else:
+                    jump = f'jump {target:x}'
             elif const_mask & 0x00f == 0:
                 # Since the switch is OR-based, we need the less significant 4 bits
                 # to have a known base value, so we always take them from a constant
@@ -188,7 +193,13 @@ class MicroCode(object):
             if fe == 0 and pup == 0:
                 jump += '; pop'
 
-        return jsr_ + push + jump
+        op = jsr_ + push
+        if op == '':
+            return jump
+        if jump == '':
+            return op
+        sep = '; ' if push else ''
+        return op + sep + jump
 
     def getDPBus(self, d2d3, dest, mw_a7):
         # 'dest' is also used for constants, but these are inverted
