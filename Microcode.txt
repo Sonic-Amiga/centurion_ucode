@@ -27,7 +27,7 @@ Addr DP             ALUCIn    ALUOp                                    F        
  19: swap           0         Y=r0+Q                                                                                                               Addr_U/D<=0                 jump 96
  1a: swap           0         r3=0&r0  Y=0&r0                                                                                                                                  jump 68f
  1b: unused
- 1c: R[RIdx]        0         r0=D|0  Y=D|0                                                                                                                                    push 1d; jump 2|(AR & f0)
+ 1c: R[RIdx]        0         r0=D|0  Y=D|0                                                                                                                                    jsr 2|(AR & f0)
  1d: swap           0         Y=0|r0                                   RES<=F                                                          AFL.EN      R[RIdx.L][CPL]<=RES LSB     jump 30e
  1e: swap           0         r9=r9-0  Y=r9-0                                                                           BeginRead                                              jump 10
  1f: swap           0         Y=0|Q                                                                                                    AFL.EN                                  ret
@@ -38,15 +38,15 @@ Addr DP             ALUCIn    ALUOp                                    F        
  24: swap           0         Y=r0+Q                                                                                                               DMAEnd                      if RegIdx & 1 jsr 482
  25: R[RIdx.L][CPL] 0         r10=D|0  Y=D|0                                                                            BeginRead                                      LSB     jump 289
  26: const:7f       0         r9=~(D^0)  Y=~(D^0)                                                                                                                              
- 27: swap           0         r1=~(0^r5)  Y=~(0^r5)                                                                                                                            push 28; jump 62c
+ 27: swap           0         r1=~(0^r5)  Y=~(0^r5)                                                                                                                            jsr 62c
  28: swap           AFL.C     Q=0+Q Y=0+Q                                                                                                                                      jump 5aa
  29: swap           0         Y=r0+Q                                                                                    BeginRead                                              jump 79d; pop
  2a: swap           1         r3=0+r3  Y=0+r3                          CCR<={V=CCR.V,M=CCR.M,F=1,L=CCR.L}               BeginRead                                              jump b
  2b: const:d1       0         Y=~(D^0)                                 RIdx<=F                                                                                                 jump 2e; pop
- 2c: swap           AFL.C     r0=r0-0  Y=r0-0                                                                           BeginWrite                                             push 2d; jump 76c
+ 2c: swap           AFL.C     r0=r0-0  Y=r0-0                                                                           BeginWrite                                             jsr 76c
  2d: swap           0         Y=r0+Q                                                                                    BeginRead                                              jump 4ae
  2e: swap           0         Y=r0+Q                                                                                                                                   LSB     jump 4bd
- 2f: const:7f       0         r9=r3-D  Y=r3-D                          RIdx<=F                                                                                                 push 30; jump 580
+ 2f: const:7f       0         r9=r3-D  Y=r3-D                          RIdx<=F                                                                                                 jsr 580
  30: CCR            0         Q=~(D^0) Y=~(D^0)                                                                                                                                jump 46a
  31: bus_read       0         r3=D|0  Y=D|0                                                                             BeginRead                                              if MemFault jsr 1be
  32: swap           0         r7=r3+r7  Y=r3+r7                                                                                                                                if REG_MMIO jsr 643
@@ -144,12 +144,12 @@ Addr DP             ALUCIn    ALUOp                                    F        
  8e: swap           0         r3=r3-0  Y=r3-0                                                                                          AFL.EN                                  if RegOrPageOut jsr 5cc
  8f: swap           0         Y=r0+Q                                   WorkAddr<=RES                                                   BusCycleEnd                             switch flags(ZM) jump (9, 9, b, b)|(AR & f0)
  90: R[RIdx]        0         r1=D|0  Y=D|0                                                                                                                                    if DMARequest jsr 785
- 91: swap           0         Y=r0+Q                                                                                                                                           push 92; jump f1
+ 91: swap           0         Y=r0+Q                                                                                                                                           jsr f1
  92: swap           0         Y=0|Q                                    RES<=F                                                                                                  if DMARequest jsr 785
  93: swap           0         r5=r5-0  Y=r5-0                                                                                          AFL.EN      R[RIdx]<=RES                jump 5fd
  94: swap           0         Y=(~D)&r6                                RES<=F                                           BeginRead                                              
  95: swap           0         Y=r0+Q                                                                                                               R[RIdx.L][CPL]<=RES LSB     jump 101
- 96: swap           0         r9=0|r7  Y=0|r7                          RIdx<=F                                          MemAddr_Cnt                                            push 97; jump f1
+ 96: swap           0         r9=0|r7  Y=0|r7                          RIdx<=F                                          MemAddr_Cnt                                            jsr f1
  97: R[RIdx]        0         Y=D+Q                                    RES<=F                                                          AFL.EN                                  if DMARequest jsr 785
  98: swap           AFL.C     r4=0+r4  Y=0+r4                          RES<=F                                                                      R[RIdx]<=RES                jump 4b9
  99: swap           0         Y=r0+Q                                                                                    BeginRead                  Addr_U/D<=1                 jump 7eb
@@ -176,10 +176,10 @@ Addr DP             ALUCIn    ALUOp                                    F        
  ae: swap           0         Y=r0+Q                                                                                                   BusCycleEnd                             if DMARequest jsr 785
  af: swap           0         Y=r0+r8                                  RES<=F                                                          AFL.EN                                  if MemFault jsr 73e
  b0: swap           AFL.C     Y=0+r1                                   RES<=F                                                                      R[RIdx.L][CPL]<=RES LSB     jump 2bb
- b1: swap           0         Y=r0+Q                                                                                                               DMAEnd                      push b2; jump 7e
+ b1: swap           0         Y=r0+Q                                                                                                               DMAEnd                      jsr 7e
  b2: swap           0         r6=r6^r6  Y=r6^r6                                                                                                                                switch flags(ZM) jump (b1, b1, b3, b3)
- b3: const:81       0         r11=~(D^0)  Y=~(D^0)                                                                                                                             push b4; jump 7e
- b4: ILR?           0         r0=D^0  Y=D^0                                                                                                                                    push b5; jump 7e
+ b3: const:81       0         r11=~(D^0)  Y=~(D^0)                                                                                                                             jsr 7e
+ b4: ILR?           0         r0=D^0  Y=D^0                                                                                                                                    jsr 7e
  b5: const:2        0         Y=D&r0                                                                                    Swap           AFL.EN      RTC_INT_EN<=1               
  b6: swap           0         Y=r0^r0                                  RES<=F                                           Swap                                                   switch flags(ZM) jump (b9, b9, bb, bb)
  b7: const:e1       0         r7=~(D^0)  Y=r5                          RES<=F                                                                      Addr_U/D<=1                 
@@ -210,29 +210,29 @@ Addr DP             ALUCIn    ALUOp                                    F        
  d0: swap           0         Y=r0+Q                                                                                                                                           if REG_MMIO jsr 643
  d1: swap           0         Y=r0+Q                                                                                    MemAddr_Cnt    BusCycleEnd                             jump 31
  d2: swap           AFL.C     r0=r0+r0  Y=r0+r0                                                                                        AFL.EN                                  
- d3: swap           1         r4=(0|r4)<<1 Q<<=1 Y=0|r4 Q0=AFL.C                                                                                                               push d4; jump 259
- d4: swap           1         r4=(0|r4)<<1 Q<<=1 Y=0|r4 Q0=AFL.C                                                                                                               push d5; jump 259
- d5: swap           1         r4=(0|r4)<<1 Q<<=1 Y=0|r4 Q0=AFL.C                                                                                                               push d6; jump 259
- d6: swap           1         r4=(0|r4)<<1 Q<<=1 Y=0|r4 Q0=AFL.C                                                                                                               push d7; jump 259
- d7: swap           1         r4=(0|r4)<<1 Q<<=1 Y=0|r4 Q0=AFL.C                                                                                                               push d8; jump 259
- d8: swap           1         r4=(0|r4)<<1 Q<<=1 Y=0|r4 Q0=AFL.C                                                                                                               push d9; jump 259
- d9: swap           1         r4=(0|r4)<<1 Q<<=1 Y=0|r4 Q0=AFL.C                                                                                                               push da; jump 259
- da: swap           1         r4=(0|r4)<<1 Q<<=1 Y=0|r4 Q0=AFL.C                                                                                                               push db; jump 259
- db: swap           1         r4=(0|r4)<<1 Q<<=1 Y=0|r4 Q0=AFL.C                                                                                                               push dc; jump 259
- dc: swap           1         r4=(0|r4)<<1 Q<<=1 Y=0|r4 Q0=AFL.C                                                                                                               push dd; jump 259
- dd: swap           1         r4=(0|r4)<<1 Q<<=1 Y=0|r4 Q0=AFL.C                                                                                                               push de; jump 259
- de: swap           1         r4=(0|r4)<<1 Q<<=1 Y=0|r4 Q0=AFL.C                                                                                                               push df; jump 259
- df: swap           1         r4=(0|r4)<<1 Q<<=1 Y=0|r4 Q0=AFL.C                                                                                                               push e0; jump 259
- e0: swap           1         r4=(0|r4)<<1 Q<<=1 Y=0|r4 Q0=AFL.C                                                                                                               push e1; jump 259
- e1: swap           1         r4=(0|r4)<<1 Q<<=1 Y=0|r4 Q0=AFL.C                                                                                                               push e2; jump 259
- e2: swap           1         r4=(0|r4)<<1 Q<<=1 Y=0|r4 Q0=AFL.C                                                                                                               push e3; jump 259
+ d3: swap           1         r4=(0|r4)<<1 Q<<=1 Y=0|r4 Q0=AFL.C                                                                                                               jsr 259
+ d4: swap           1         r4=(0|r4)<<1 Q<<=1 Y=0|r4 Q0=AFL.C                                                                                                               jsr 259
+ d5: swap           1         r4=(0|r4)<<1 Q<<=1 Y=0|r4 Q0=AFL.C                                                                                                               jsr 259
+ d6: swap           1         r4=(0|r4)<<1 Q<<=1 Y=0|r4 Q0=AFL.C                                                                                                               jsr 259
+ d7: swap           1         r4=(0|r4)<<1 Q<<=1 Y=0|r4 Q0=AFL.C                                                                                                               jsr 259
+ d8: swap           1         r4=(0|r4)<<1 Q<<=1 Y=0|r4 Q0=AFL.C                                                                                                               jsr 259
+ d9: swap           1         r4=(0|r4)<<1 Q<<=1 Y=0|r4 Q0=AFL.C                                                                                                               jsr 259
+ da: swap           1         r4=(0|r4)<<1 Q<<=1 Y=0|r4 Q0=AFL.C                                                                                                               jsr 259
+ db: swap           1         r4=(0|r4)<<1 Q<<=1 Y=0|r4 Q0=AFL.C                                                                                                               jsr 259
+ dc: swap           1         r4=(0|r4)<<1 Q<<=1 Y=0|r4 Q0=AFL.C                                                                                                               jsr 259
+ dd: swap           1         r4=(0|r4)<<1 Q<<=1 Y=0|r4 Q0=AFL.C                                                                                                               jsr 259
+ de: swap           1         r4=(0|r4)<<1 Q<<=1 Y=0|r4 Q0=AFL.C                                                                                                               jsr 259
+ df: swap           1         r4=(0|r4)<<1 Q<<=1 Y=0|r4 Q0=AFL.C                                                                                                               jsr 259
+ e0: swap           1         r4=(0|r4)<<1 Q<<=1 Y=0|r4 Q0=AFL.C                                                                                                               jsr 259
+ e1: swap           1         r4=(0|r4)<<1 Q<<=1 Y=0|r4 Q0=AFL.C                                                                                                               jsr 259
+ e2: swap           1         r4=(0|r4)<<1 Q<<=1 Y=0|r4 Q0=AFL.C                                                                                                               jsr 259
  e3: swap           0         r8=D&r8  Y=D&r8                          RIdx<=F                                                                                                 jump ee
  e4: swap           0         Y=0|r1                                   RES<=F                                                          AFL.EN                                  
  e5: swap           0         Y=0|r0                                   RES<=F                                           BeginRead      AFL.EN      R[RIdx.L][CPL]<=RES LSB     jump 30e
  e6: unused
  e7: swap           0         Y=r0+Q                                   WorkAddr<=RES                                    WorkAddr_LD_HI             WorkAddr_LD_LO              
  e8: swap           0         Y=r0+Q                                                                                    BeginRead                                              jump 46e
- e9: const:f2       0         Y=D|r8                                   RIdx<=F                                                                     R[RIdx.L][CPL]<=RES         push ea; jump ed
+ e9: const:f2       0         Y=D|r8                                   RIdx<=F                                                                     R[RIdx.L][CPL]<=RES         jsr ed
  ea: swap           0         Y=0|r4                                   RES<=F                                                          AFL.EN      R[RIdx.L][CPL]<=RES LSB     switch flags(ZM) jump (e9, e9, eb, eb)
  eb: const:32       0         Y=D|r8                                   RIdx<=F                                                                     R[RIdx.L][CPL]<=RES         push ec; switch flags(ZM) jump (ed, ed, ef, ef)
  ec: unused
@@ -255,7 +255,7 @@ Addr DP             ALUCIn    ALUOp                                    F        
  fd: swap           0         Y=r0+Q                                                                                    WorkAddr_LD_HI                                         jump e7
  fe: swap           0         Q=0|r3 Y=0|r3                                                                                                                                    jump f1
  ff: swap           0         r4=(r1+r4)>>1 Q>>=1 Y=r1+r4 RAM7=ALU.C   CCR<={V=CCR.V,M=CCR.M,F=0,L=ALU.SHIFT_Q0}                                                               ret
-100: swap           0         Y=r0+Q                                                                                    BeginRead                                              push 101; 
+100: swap           0         Y=r0+Q                                                                                    BeginRead                                              push 101
 Op_01:
 101: swap           0         r9=r9^r9  Y=r9^r9                        RIdx<=F                                                         AFL.EN                                  if REG_MMIO jsr 633
 102: swap           1         r8=0+r9  Y=r9                            RES<=F                                           MemAddr_Cnt    BusCycleEnd                             if MultiINT jsr 77f
@@ -426,7 +426,7 @@ Op_5c:
 Op_5d:
 Op_5e:
 Op_5f:
-140: swap           0         Y=0|r1                                   RES<=F                                                          AFL.EN                                  push 141; jump 320|(AR & f)
+140: swap           0         Y=0|r1                                   RES<=F                                                          AFL.EN                                  jsr 320|(AR & f)
 Op_48:
 Op_49:
 Op_4a:
@@ -560,8 +560,8 @@ Op_d6:
 173: bus_read       0         r5=D&r5  Y=D&r5                          RES<=F                                           Swap           AFL.EN                                  if MemFault jsr 466
 174: swap           0         r9=D|0  Y=D|0                            RIdx<=F                                                                                                 if DMARequest jsr 785
 175: swap           0         Y=r0+Q                                                                                                                                           jump 501|(AR & f0)
-176: swap           0         Y=r0+Q                                                                                                                                   LSB     push 177; jump 4ed
-177: swap           1         r8=0+r8  Y=0+r8                                                                                                                                  push 178; jump 522
+176: swap           0         Y=r0+Q                                                                                                                                   LSB     jsr 4ed
+177: swap           1         r8=0+r8  Y=0+r8                                                                                                                                  jsr 522
 178: swap           0         Y=0|r7                                                                                                   AFL.EN                                  jump 23
 179: swap           0         r0=0&r0  Y=0&r0                                                                                                                                  switch flags(ZM) jump (9, 9, b, b)|(STK0 & ff0); pop
 17a: R[RIdx.L][CPL] 0         r1=D|0  Y=D|0                            CCR<={V=CCR.V,M=CCR.M,F=0,L=CCR.L}                                                                      jump 1c
@@ -625,11 +625,11 @@ Op_7f:
 Op_09:
 193: const:f5       0         r9=~(D^0)  Y=~(D^0)                      RIdx<=F                                                                                                 
 194: swap           0         Y=r0+Q                                                                                                                                   LSB     jump 23c
-195: swap           0         r4=0|r8  Y=0|r8                                                                                                                                  push 196; jump 1df
-196: swap           0         Y=r0+Q                                                                                                                                           push 197; jump 109|(AR & f0)
+195: swap           0         r4=0|r8  Y=0|r8                                                                                                                                  jsr 1df
+196: swap           0         Y=r0+Q                                                                                                                                           jsr 109|(AR & f0)
 197: const:f        0         Y=~(D^r0)                                RES<=F                                                                                                  
 198: swap           0         Y=0|Q                                    RES<=F                                                                      R[RIdx]<=RES                jump 105
-199: swap           0         r4=0|r8  Y=0|r8                                                                                                                                  push 19a; jump 569
+199: swap           0         r4=0|r8  Y=0|r8                                                                                                                                  jsr 569
 19a: const:80       0         r9=D+r3  Y=D+r3                          WorkAddr<=RES                                                                                           jump 67b
 19b: swap           0         Y=r0+Q                                   CCR<={V=CCR.V,M=CCR.M,F=1,L=CCR.L}                                                                      
 19c: const:11       0         r9=~(D^0)  Y=~(D^0)                      RIdx<=F                                                                                                 jump 5ee
@@ -677,7 +677,7 @@ Op_1e:
 1c1: swap           1         Y=0+r2                                   RIdx<=F                                                                                                 jump 1e4
 1c2: const:8        0         r1=D+r1  Y=r1                            PTIdx<=F                                         WorkAddr_LD_HI                                         jump 1f7
 1c3: const:d1       0         Y=~(D^0)                                 RIdx<=F                                                                                                 jump 2e
-1c4: swap           0         Y=r0+Q                                                                                                                                           push 1c5; jump 68e
+1c4: swap           0         Y=r0+Q                                                                                                                                           jsr 68e
 1c5: const:fd       0         Q=~(D^0) Y=~(D^0)                                                                                                                                
 1c6: swap           0         Y=r0+Q                                                                                                                                           jump 7
 1c7: swap           0         Y=r0+Q                                   CCR<={V=CCR.V,M=CCR.M,F=CCR.F,L=AFL.C}                                                                  
@@ -849,14 +849,14 @@ Op_1a:
 24f: swap           0         Y=0&r0                                   RES<=F                                                                                                  jump 105
 250: swap           0         Y=0|r3                                   RES<=F                                           BeginRead      AFL.EN                                  
 251: swap           0         Y=0|r2                                   RES<=F                                                          AFL.EN      R[RIdx.L][CPL]<=RES LSB     jump 30e
-252: swap           0         Y=0|r7                                   RES<=F                                                                                                  push 253; jump 4ee
+252: swap           0         Y=0|r7                                   RES<=F                                                                                                  jsr 4ee
 253: const:8        0         r6=(~D)&r6  Y=(~D)&r6                                                                                                                            
 254: const:6f       0         r9=r8-D  Y=r8-D                                                                                                                                  jump 195
 255: R[RIdx.L][CPL] 0         r1=D|0  Y=D|0                            RES<=F                                                                                                  if RegIdx & 1 jsr 482
 256: R[RIdx]        0         r0=D|0  Y=D|0                            RES<=F                                                                      WorkAddr_LD_LO              jump 34c
 257: swap           0         Q=r3+Q Y=r3+Q                                                                                            AFL.EN                                  if DMARequest jsr 785
 258: swap           AFL.C     r4=r2+r4  Y=r2+r4                                                                                                                                jump 2e8
-259: swap           1         Q=Q-r3 Y=Q-r3                                                                                            AFL.EN                                  push 25a; jump 7b
+259: swap           1         Q=Q-r3 Y=Q-r3                                                                                            AFL.EN                                  jsr 7b
 25a: bus_read       0         r1=D|0  Y=D|0                            CCR<={V=CCR.V,M=CCR.M,F=0,L=CCR.L}                                                                      jump 40b
 25b: swap           0         Y=r0+Q                                   WorkAddr<=RES                                    WorkAddr_LD_HI BusCycleEnd WorkAddr_LD_LO              if DMARequest jsr 785
 25c: R[RIdx.L][CPL] 0         Y=D|0                                    RES<=F                                           BeginRead                                      LSB     jump 738
@@ -941,7 +941,7 @@ Op_1a:
 2ab: R[RIdx.L][CPL] AFL.C     r0=D-0  Y=D-0                            RES<=F                                                                      R[RIdx.L][CPL]<=RES LSB     if REG_MMIO jsr 633
 2ac: swap           0         Y=r0+Q                                                                                    MemAddr_Cnt    BusCycleEnd R[RIdx.L][CPL]<=RES         jump 36a
 2ad: swap           0         Y=0|r2                                   CPL<=F                                                                                                  jump 101
-2ae: swap           0         Y=r0+Q                                                                                                                                           push 2af; jump 48e
+2ae: swap           0         Y=r0+Q                                                                                                                                           jsr 48e
 2af: const:f5       0         r9=~(D^0)  Y=~(D^0)                      RIdx<=F                                                                                                 
 2b0: const:fb       0         r9=~(D^0)  Y=~(D^0)                                                                                                                      LSB     
 2b1: R[RIdx.L][CPL] 1         r0=D+0  Y=D+0                            RES<=F                                                          AFL.EN                                  jump 2d0
@@ -966,7 +966,7 @@ Op_1a:
 2c4: swap           0         Y=r5+r3                                  RES<=F                                           WorkAddr_LD_HI AFL.EN                                  
 2c5: swap           AFL.C     Y=0+r4                                   RES<=F                                                                      R[RIdx.L][CPL]<=RES LSB     
 2c6: swap           0         r9=0|r8  Y=0|r8                          RIdx<=F                                                                     R[RIdx.L][CPL]<=RES         jump 203|(AR & f0)
-2c7: swap           0         r1=0|r0  Y=0|r0                                                                                                                                  push 2c8; jump f0
+2c7: swap           0         r1=0|r0  Y=0|r0                                                                                                                                  jsr f0
 2c8: swap           0         r5=0|Q  Y=0|Q                                                                                                                                    if DMARequest jsr 785
 2c9: swap           0         r0=0|r4  Y=0|r4                                                                                                                                  jump 2d4
 2ca: R[RIdx.L][CPL] 0         r1=D|0  Y=D|0                                                                                                                                    if RegIdx & 1 jsr 362
@@ -979,7 +979,7 @@ Op_1a:
 2d1: swap           0         Y=0|r9                                   RIdx<=F                                          WorkAddr_LD_HI                                         jump 25b
 2d2: swap           0         Y=r0^r0                                  RES<=F                                                                                                  jump 105
 2d3: swap           0         Y=r0+Q                                   WorkAddr<=RES                                    WorkAddr_LD_HI             WorkAddr_LD_LO              jump 294
-2d4: swap           0         r4=0&r0  Y=0&r0                                                                           Swap                                                   push 2d5; jump fe
+2d4: swap           0         r4=0&r0  Y=0&r0                                                                           Swap                                                   jsr fe
 2d5: swap           0         r3=D|0  Y=D|0                                                                                                                                    if DMARequest jsr 785
 2d6: const:f1       0         r3=(~D)&r3  Y=(~D)&r3                    RIdx<=F                                                                                                 
 2d7: const:c2       0         r3=D|r3  Y=D|r3                          CCR<={V=AFL.Z,M=AFL.S,F=0,L=0}                                                                          
@@ -995,7 +995,7 @@ Op_1a:
 2e1: swap           0         r6=r1|r6  Y=r1|r6                                                                         BeginRead                                              jump 101
 2e2: swap           0         Y=r0^r0                                  RES<=F                                                                                                  jump 105
 2e3: swap           0         Y=0&r0                                   WorkAddr<=RES                                    WorkAddr_LD_HI AFL.EN      WorkAddr_LD_LO      LSB     jump 2a4
-2e4: swap           AFL.C     Y=r4+r5                                  RES<=F                                                          AFL.EN                                  push 2e5; jump 3f8
+2e4: swap           AFL.C     Y=r4+r5                                  RES<=F                                                          AFL.EN                                  jsr 3f8
 2e5: swap           0         Y=0|r7                                   RES<=F                                                                      R[RIdx.L][CPL]<=RES LSB     if DMARequest jsr 785
 2e6: swap           0         Y=r0+Q                                   CCR<={V=AFL.Z&AFL.LZ,M=AFL.S,F=1,L=CCR.L}        BeginRead                  R[RIdx.L][CPL]<=RES         jump STK0
 2e7: swap           0         Y=0|r7                                   RES<=F                                           BeginRead      AFL.EN      R[RIdx.L][CPL]<=RES LSB     jump 30e
@@ -1061,7 +1061,7 @@ Op_1a:
 323: R[RIdx]        0         Y=D|r0                                   RES<=F                                           BeginRead      AFL.EN                                  jump 30e
 324: R[RIdx]        0         Y=D^r0                                   RES<=F                                           BeginRead      AFL.EN                                  jump 30e
 325: R[RIdx]        0         Y=D|0                                    RES<=F                                           BeginRead      AFL.EN                                  jump 30e
-326: const:f        0         r0=~(D^0)  Y=~(D^0)                                                                                                                              push 327; jump 3f0
+326: const:f        0         r0=~(D^0)  Y=~(D^0)                                                                                                                              jsr 3f0
 327: swap           0         r9=0|r8  Y=0|r8                          RIdx<=F                                          WorkAddr_LD_HI                                         jump 203|(AR & f0)
 328: R[RIdx]        0         Y=D+r1                                   RES<=F                                                          AFL.EN                                  jump 30c
 329: R[RIdx]        1         Y=r1-D                                   RES<=F                                                          AFL.EN                                  jump 30c
@@ -1077,7 +1077,7 @@ Op_1a:
 333: bus_read       0         r1=D|0  Y=D|0                                                                                            AFL.EN                                  jump 326
 334: bus_read       0         r1=D|0  Y=D|0                                                                                            AFL.EN                                  jump 336
 335: bus_read       0         Y=r0+Q                                                                                    Swap                                                   jump 347
-336: const:f        0         r0=~(D^0)  Y=~(D^0)                                                                                                                              push 337; jump 3f0
+336: const:f        0         r0=~(D^0)  Y=~(D^0)                                                                                                                              jsr 3f0
 337: swap           0         Y=r0+Q                                                                                    WorkAddr_LD_HI                                         jump 357
 338: R[RIdx.L][CPL] 0         Y=D+r1                                   RES<=F                                                          AFL.EN                                  jump 201
 339: R[RIdx.L][CPL] 1         Y=r1-D                                   RES<=F                                                          AFL.EN                                  jump 211
@@ -1119,7 +1119,7 @@ Op_1a:
 35d: swap           0         Y=r0+Q                                   WorkAddr<=RES                                    WorkAddr_LD_HI BusCycleEnd WorkAddr_LD_LO              
 35e: swap           0         Y=r0+Q                                                                                                                                           if MemFault jsr 78e
 35f: bus_read       0         r5=D|0  Y=D|0                            RES<=F                                           WorkAddr_LD_HI                                         jump 346
-360: swap           0         r7=r8+r7  Y=r8+r7                        RES<=F                                                          AFL.EN                                  push 361; jump 4d9
+360: swap           0         r7=r8+r7  Y=r8+r7                        RES<=F                                                          AFL.EN                                  jsr 4d9
 361: swap           0         Q=0&r0 Y=0&r0                                                                             BeginRead                                              jump 3b4
 362: swap           0         Y=0&r0                                   RES<=F                                                          BusCycleEnd                             jump 105
 363: swap           0         r9=0|r8  Y=0|r8                                                                                                                                  if MemFault jsr 636
@@ -1139,7 +1139,7 @@ Op_1a:
 371: swap           0         Y=r0+Q                                                                                                                                           if REG_MMIO jsr 643
 372: swap           0         Y=r0+Q                                                                                                   BusCycleEnd                             if DMARequest jsr 785
 373: bus_read       0         r1=D|0  Y=D|0                                                                                                                                    if MemFault jsr 73e
-374: swap           0         Y=r0+Q                                                                                                               Addr_U/D<=0                 push 375; jump 264
+374: swap           0         Y=r0+Q                                                                                                               Addr_U/D<=0                 jsr 264
 375: swap           AFL.C     r0=r0-r0  Y=r0-r0                        RIdx<=F                                          MemAddr_Cnt                                            
 376: swap           0         Y=r4^r5                                                                                                  AFL.EN                                  jump 39c
 377: swap           0         Y=r0+Q                                                                                                               R[RIdx]<=RES                jump 101
@@ -1172,9 +1172,9 @@ Op_1a:
 392: swap           0         Y=r0+Q                                   WorkAddr<=RES                                                               R[RIdx.L][CPL]<=RES LSB     jump 100
 393: swap           0         r4=r4+r4  Y=r4+r4                        CCR<={V=CCR.V,M=CCR.M,F=0,L=0}                                                                          
 394: swap           0         r5=0|r1  Y=0|r1                                                                                                                                  
-395: swap           0         r7=0|r2  Y=0|r2                                                                                                                                  push 396; jump 3a7
-396: swap           0         Y=~(r0^r0)                                                                                               AFL.EN                                  push 397; jump 45e
-397: mar_lo         0         Y=D|0                                    RES<=F                                                                                                  push 398; jump 4ea
+395: swap           0         r7=0|r2  Y=0|r2                                                                                                                                  jsr 3a7
+396: swap           0         Y=~(r0^r0)                                                                                               AFL.EN                                  jsr 45e
+397: mar_lo         0         Y=D|0                                    RES<=F                                                                                                  jsr 4ea
 398: swap           0         Y=0|r4                                   AR<=F                                                                                                   if DMARequest jsr 785
 399: swap           0         r9=r9^r9  Y=r9^r9                        RIdx<=F                                                                                                 jump 202|(AR & f0)
 39a: bus_read       0         Y=D|0                                    RES<=F                                           BeginRead      AFL.EN                                  if MemFault jsr 77e
@@ -1188,13 +1188,13 @@ Op_1a:
 3a2: bus_read       0         r8=r0&r8  Y=r0&r8                                                                         Swap                                                   if REG_MMIO jsr 633
 3a3: swap           0         r3=D&r0  Y=D&r0                                                                           MemAddr_Cnt    BusCycleEnd                             if DMARequest jsr 785
 3a4: bus_read       0         r4=D|0  Y=D|0                                                                                                                                    if MemFault jsr 466
-3a5: swap           0         Y=r0^r0                                                                                                  AFL.EN                                  push 3a6; jump 44e
+3a5: swap           0         Y=r0^r0                                                                                                  AFL.EN                                  jsr 44e
 3a6: swap           0         Q=0|r4 Y=0|r4                                                                                                                                    switch flags(ZM) jump (3aa, 3ab, 3aa, 3ab)
 3a7: swap           0         r9=0|r3  Y=0|r3                                                                                                                                  
 3a8: swap           0         r3=0|r8  Y=0|r8                                                                                                                                  if DMARequest jsr 785
 3a9: swap           0         r8=0|r9  Y=0|r9                                                                                                                                  ret
 3aa: swap           0         r4=r4+r4  Y=r4+r4                                                                                                                                jump 393
-3ab: swap           0         r9=0|r3  Y=0|r3                                                                                                                                  push 3ac; jump 3a8
+3ab: swap           0         r9=0|r3  Y=0|r3                                                                                                                                  jsr 3a8
 3ac: swap           0         Y=r0+Q                                                                                                                                           jump 397
 3ad: R[RIdx.L][CPL] 0         r3=D|0  Y=r5                             RIdx<=F                                                         AFL.EN                                  jump 3ae
 3ae: R[RIdx.L][CPL] 0         r2=D|0  Y=D|0                                                                                                                            LSB     jump 200|(AR & f0)
@@ -1236,7 +1236,7 @@ Op_1a:
 3d2: bus_read       0         r1=D|0  Y=D|0                                                                             BeginRead                                              if MemFault jsr 70e
 3d3: swap           0         Y=r0+Q                                                                                                               Addr_U/D<=0                 if REG_MMIO jsr 643
 3d4: swap           0         Y=r0+Q                                                                                    WorkAddr_Cnt   BusCycleEnd                             if DMARequest jsr 785
-3d5: bus_read       0         r2=D|0  Y=D|0                                                                                                                                    push 3d6; jump 264
+3d5: bus_read       0         r2=D|0  Y=D|0                                                                                                                                    jsr 264
 3d6: swap           AFL.C     r0=r0-r0  Y=r0-r0                                                                                                                                if DMARequest jsr 785
 3d7: swap           0         Y=r0+Q                                                                                                               Addr_U/D<=0                 jump 209|(AR & f0)
 3d8: swap           0         Q=0&r0 Y=0&r0                                                                                                                                    switch flags(ZM) jump (3d9, 3d9, 3db, 3db)
@@ -1260,7 +1260,7 @@ Op_1a:
 3ea: swap           0         Y=r0+Q                                   WorkAddr<=RES                                    WorkAddr_LD_HI             WorkAddr_LD_LO              jump 280|(AR & f)
 3eb: swap           0         Y=r0+Q                                                                                                                                           jump 100
 3ec: const:6d       0         r3=~(D^0)  Y=~(D^0)                                                                                                                              
-3ed: const:1e       0         r4=D|0  Y=D|0                                                                                            BusCycleEnd                             push 3ee; jump 1e1
+3ed: const:1e       0         r4=D|0  Y=D|0                                                                                            BusCycleEnd                             jsr 1e1
 3ee: swap           0         Y=r0+Q                                                                                    BeginRead                                              jump 101
 3ef: swap           0         Y=r0+Q                                                                                                               R[RIdx.L][CPL]<=RES LSB     jump 101
 3f0: mar_hi         0         r0=D^r0  Y=D^r0                                                                                                                                  if MemFault jsr 466
@@ -1291,7 +1291,7 @@ Op_1a:
 409: const:80       0         r9=D+r2  Y=D+r2                          RIdx<=F                                                                                                 
 40a: swap           0         Y=r0+Q                                                                                                                                           jump 41c
 40b: swap           0         Y=r0+Q                                                                                                                                           if MemFault jsr 6
-40c: swap           0         Y=r0+Q                                                                                                                                           push 40d; jump 2|(AR & f0)
+40c: swap           0         Y=r0+Q                                                                                                                                           jsr 2|(AR & f0)
 40d: swap           0         r0=0|r0  Y=r1                                                                                            AFL.EN      DataWTClock                 
 40e: swap           0         Y=r0+Q                                   CCR<={V=AFL.Z&AFL.LZ,M=AFL.S,F=CCR.F,L=CCR.L}    BeginWrite                                             ret
 40f: unused
@@ -1393,17 +1393,17 @@ Op_1a:
 46f: swap           0         Y=r0+Q                                                                                    MemAddr_Cnt    BusCycleEnd                             if DMARequest jsr 785
 470: bus_read       0         r0=D|0  Y=D|0                                                                             BeginRead                                              if MemFault jsr 7ae
 471: swap           0         Y=0|r4                                                                                                   AFL.EN                                  if REG_MMIO jsr 63b
-472: swap           0         Y=r0+Q                                                                                                   BusCycleEnd                             push 473; jump 20a|(AR & f0)
+472: swap           0         Y=r0+Q                                                                                                   BusCycleEnd                             jsr 20a|(AR & f0)
 473: swap           0         Y=r0+Q                                                                                                               Addr_U/D<=0                 if RegOrPageOut jsr 66c
 474: swap           0         Y=r0+Q                                                                                    MemAddr_Cnt    BusCycleEnd                             if DMARequest jsr 785
 475: swap           0         Y=0|r0                                   RES<=F                                                                      DataWTClock                 jump 3f3
 476: bus_read       0         r3=D|0  Y=D|0                                                                                                                                    if MemFault jsr 78e
-477: swap           0         r4=0&r0  Y=0&r0                                                                                                                                  push 478; jump fe
-478: swap           0         r8=0|Q  Y=0|Q                                                                                                                                    push 479; jump f0
+477: swap           0         r4=0&r0  Y=0&r0                                                                                                                                  jsr fe
+478: swap           0         r8=0|Q  Y=0|Q                                                                                                                                    jsr f0
 479: swap           0         r7=0|Q  Y=0|Q                                                                                                                                    jump 2c7
-47a: swap           0         r5=0&r0  Y=0&r0                                                                                                                                  push 47b; jump 4ef
+47a: swap           0         r5=0&r0  Y=0&r0                                                                                                                                  jsr 4ef
 47b: const:80       0         r9=D+r3  Y=D+r3                          WorkAddr<=RES                                    WorkAddr_LD_HI             WorkAddr_LD_LO              
-47c: swap           0         r4=0|r3  Y=0|r3                                                                           BeginRead                                              push 47d; jump 10
+47c: swap           0         r4=0|r3  Y=0|r3                                                                           BeginRead                                              jsr 10
 47d: swap           1         r8=0+r8  Y=0+r8                          WorkAddr<=RES                                                                                           jump 418
 47e: bus_read       0         r2=D|0  Y=D|0                                                                                                                                    if MemFault jsr 466
 47f: swap           0         Y=0&r0                                                                                                   AFL.EN                                  ret
@@ -1439,7 +1439,7 @@ Op_1a:
 49d: swap           0         Y=0&r0                                                                                                   AFL.EN                                  ret
 49e: swap           0         r5=0|r1  Y=0|r1                                                                                                                                  jump 4a9
 49f: swap           0         Y=~(r0^r0)                                                                                               AFL.EN                                  jump 450
-4a0: swap           0         r0=(0|r0)<<1 Q<<=1 Y=0|r0 Q0=0                                                                                                                   push 4a1; jump 4ce
+4a0: swap           0         r0=(0|r0)<<1 Q<<=1 Y=0|r0 Q0=0                                                                                                                   jsr 4ce
 4a1: swap           AFL.C     r4=r4+r4  Y=r4+r4                                                                                                                                push 4a2; switch flags(ZM) jump (4ce, 4cf, 4ce, 4cf)
 4a2: swap           AFL.C     r4=r4+r4  Y=r4+r4                                                                                                                                push 4a3; switch flags(ZM) jump (4ce, 4cf, 4ce, 4cf)
 4a3: swap           AFL.C     r4=r4+r4  Y=r4+r4                                                                                                                                push 4a4; switch flags(ZM) jump (4ce, 4cf, 4ce, 4cf)
@@ -1543,11 +1543,11 @@ Op_1a:
 505: swap           0         Y=r0+Q                                                                                                               INT_ENABLE<=0               jump 101
 506: swap           0         Y=r0+Q                                   WorkAddr<=RES                                    WorkAddr_LD_HI             WorkAddr_LD_LO              jump 448
 507: bus_read       0         Y=D|0                                    RES<=F                                           MemAddr_Cnt                                            if MemFault jsr 1f6 else jump 506
-508: swap           0         r4=(0|r1)>>1  Y=0|r1 RAM7=ALU.S                                                                                                                  push 509; jump 3e0
+508: swap           0         r4=(0|r1)>>1  Y=0|r1 RAM7=ALU.S                                                                                                                  jsr 3e0
 509: swap           0         Y=r0+Q                                                                                    BeginRead                                              jump 502
 50a: const:c1       0         r9=~(D^0)  Y=~(D^0)                      RIdx<=F                                                                                                 jump 43e
 50b: R[RIdx]        0         r4=D|0  Y=D|0                                                                                                        WorkAddr_LD_LO              if DMARequest jsr 785
-50c: const:71       0         Y=~(D^0)                                 RIdx<=F                                                                                                 push 50d; jump 48e
+50c: const:71       0         Y=~(D^0)                                 RIdx<=F                                                                                                 jsr 48e
 50d: swap           0         Y=r0+Q                                   WorkAddr<=RES                                    Swap                                                   jump 7fe
 50e: swap           0         Y=r0+Q                                                                                                                                           jump 3ec
 50f: const:51       0         r9=~(D^0)  Y=~(D^0)                      RIdx<=F                                                                                                 jump 2ae
@@ -1556,14 +1556,14 @@ Op_1a:
 512: swap           0         r9=0|r0  Y=0|r0                          RIdx<=F                                          BeginRead                                              jump 5b
 513: swap           0         r8=r8-0  Y=r8-0                                                                                          AFL.EN      R[RIdx]<=RES                jump 65e
 514: swap           1         r7=0+r7  Y=0+r7                          RIdx<=F                                                                                                 switch flags(ZM) jump (512, 513, 512, 513)
-515: const:7f       0         r9=r3-D  Y=r3-D                          RIdx<=F                                                                                                 push 516; jump 580
-516: swap           0         Y=0&r0                                   RES<=F                                                                                                  push 517; jump 523
+515: const:7f       0         r9=r3-D  Y=r3-D                          RIdx<=F                                                                                                 jsr 580
+516: swap           0         Y=0&r0                                   RES<=F                                                                                                  jsr 523
 517: swap           0         Y=r0+Q                                                                                                                                           jump 8|(AR & f0)
-518: swap           0         r4=(0|r1)>>1  Y=0|r1 RAM7=ALU.S                                                                                                                  push 519; jump 3e0
+518: swap           0         r4=(0|r1)>>1  Y=0|r1 RAM7=ALU.S                                                                                                                  jsr 3e0
 519: swap           0         r4=r4-0  Y=r1                            RES<=F                                                          AFL.EN                                  jump 428
-51a: swap           0         Y=~(r0^r0)                                                                                               AFL.EN                                  push 51b; jump 4cc
-51b: mar_lo         0         Y=D|0                                    RES<=F                                                                                                  push 51c; jump 4ea
-51c: swap           0         Y=0|r7                                   RES<=F                                                                                                  push 51d; jump 4ee
+51a: swap           0         Y=~(r0^r0)                                                                                               AFL.EN                                  jsr 4cc
+51b: mar_lo         0         Y=D|0                                    RES<=F                                                                                                  jsr 4ea
+51c: swap           0         Y=0|r7                                   RES<=F                                                                                                  jsr 4ee
 51d: swap           0         r2=0&r0  Y=0&r0                          RES<=F                                                                                                  jump a|(AR & f0)
 51e: swap           0         Y=r0+Q                                                                                                                                           if RegOrPageOut jsr 5cc
 51f: swap           0         Y=r0+Q                                                                                                   BusCycleEnd                             if DMARequest jsr 785
@@ -1634,9 +1634,9 @@ Op_1a:
 560: R[RIdx]        0         r14=D^r1  Y=D^r1                                                                                                                                 jump 58a
 561: const:80       0         r4=D|0  Y=D|0                                                                                                                                    
 562: R[RIdx]        0         r1=D|0  Y=D|0                                                                                                                                    switch flags(IL) jump (567, 567, 56f, 56f)
-563: swap           0         Y=~(r0^r0)                                                                                               AFL.EN                                  push 564; jump 4cc
-564: mar_lo         0         Y=D|0                                    RES<=F                                                                                                  push 565; jump 4ea
-565: swap           0         Y=0|r7                                   RES<=F                                                                                                  push 566; jump 4ee
+563: swap           0         Y=~(r0^r0)                                                                                               AFL.EN                                  jsr 4cc
+564: mar_lo         0         Y=D|0                                    RES<=F                                                                                                  jsr 4ea
+565: swap           0         Y=0|r7                                   RES<=F                                                                                                  jsr 4ee
 566: swap           0         Y=~(0^r4)                                                                                 BeginRead      AFL.EN                                  jump 45d
 567: swap           0         Y=r0-r0                                                                                                  AFL.EN                                  jump 27e
 568: const:d1       0         r9=~(D^0)  Y=~(D^0)                      RIdx<=F                                                                                                 jump 62e
@@ -1747,7 +1747,7 @@ Op_1a:
 5d1: unused
 5d2: unused
 5d3: unused
-5d4: swap           0         Y=0&r0                                   RIdx<=F                                                                                                 push 5d5; jump 48e
+5d4: swap           0         Y=0&r0                                   RIdx<=F                                                                                                 jsr 48e
 5d5: const:11       0         r9=~(D^0)  Y=~(D^0)                      RIdx<=F                                                                                                 jump 5ee
 5d6: swap           1         Y=0-r1                                                                                                   AFL.EN                                  switch flags(ZM) jump (5de, 5df, 5de, 5df)
 5d7: R[RIdx]        0         Y=D|0                                    RES<=F                                                                                                  if REG_MMIO jsr 633
@@ -1786,7 +1786,7 @@ Op_1a:
 5f8: swap           0         Y=r0+Q                                                                                    MemAddr_Cnt    BusCycleEnd                             if DMARequest jsr 785
 5f9: bus_read       0         r4=D|0  Y=D|0                                                                                                                                    if MemFault jsr 466
 5fa: const:f0       0         r0=~(D^0)  Y=~(D^0)                                                                                                                              
-5fb: swap           0         Y=0&r0                                                                                                   AFL.EN                                  push 5fc; jump 44e
+5fb: swap           0         Y=0&r0                                                                                                   AFL.EN                                  jsr 44e
 5fc: swap           0         Q=0|r4 Y=0|r4                                                                                                                                    switch flags(ZM) jump (5f2, 5f3, 5f2, 5f3)
 5fd: swap           1         r9=0+r9  Y=0+r9                          RIdx<=F                                                                                                 switch flags(ZM) jump (5fe, 5ff, 5fe, 5ff)
 5fe: swap           0         Q=0|r8 Y=0|r8                                                                                                                                    jump 90
@@ -1801,26 +1801,26 @@ Op_1a:
 607: CCR            0         r5=~(D^0)  Y=~(D^0)                                                                                                                              jump 6d7
 608: swap           0         Y=r0+Q                                                                                                                                           jump 6b4
 609: swap           0         r9=0&r0  Y=0&r0                          RIdx<=F                                                         AFL.EN                                  if REG_MMIO jsr 633
-60a: swap           1         r8=0+r9  Y=r9                            RES<=F                                           MemAddr_Cnt    BusCycleEnd                             push 60b; jump 103
+60a: swap           1         r8=0+r9  Y=r9                            RES<=F                                           MemAddr_Cnt    BusCycleEnd                             jsr 103
 60b: swap           0         Y=r0+Q                                                                                                                                           jump 100
 60c: swap           0         Y=r0+Q                                                                                                                                           jump 60d
 60d: swap           0         Y=r0+Q                                                                                                                                           if Cycle jsr 6b8
 60e: swap           0         Y=r0+Q                                                                                                                                           jump 60d
 60f: R[RIdx.L][CPL] 0         Y=D|0                                    RES<=F                                                                                                  jump 625
 610: dips?          0         Y=D|0                                    RIdx<=F                                                                     /AddrCount_EN<=1            jump 7a0; pop
-611: swap           0         Y=0|r11                                  RES<=F                                                                      DMAAddrCtl<=0               push 612; jump 1ac
-612: mar_lo         0         r15=D|0  Y=D|0                                                                                                                                   push 613; jump 5bd
-613: swap           0         Y=r0+Q                                                                                                                                           push 614; jump 1ac
-614: swap           0         r14=(0|r6)>>1  Y=0|r6 RAM7=ALU.S                                                                                                                 push 615; jump 59
+611: swap           0         Y=0|r11                                  RES<=F                                                                      DMAAddrCtl<=0               jsr 1ac
+612: mar_lo         0         r15=D|0  Y=D|0                                                                                                                                   jsr 5bd
+613: swap           0         Y=r0+Q                                                                                                                                           jsr 1ac
+614: swap           0         r14=(0|r6)>>1  Y=0|r6 RAM7=ALU.S                                                                                                                 jsr 59
 615: mar_lo         0         r15=D|0  Y=r14                           PTIdx<=F                                                                                                jump 79
 616: swap           0         Y=r0+Q                                   WorkAddr<=RES                                                               Addr_U/D<=1                 jump 100
-617: swap           0         Y=0|r5                                   RES<=F                                                                      DataWTClock                 push 618; jump 6bb
-618: swap           0         Y=0|r3                                   RES<=F                                           MemAddr_Cnt                DataWTClock                 push 619; jump 6bb
+617: swap           0         Y=0|r5                                   RES<=F                                                                      DataWTClock                 jsr 6bb
+618: swap           0         Y=0|r3                                   RES<=F                                           MemAddr_Cnt                DataWTClock                 jsr 6bb
 619: swap           0         Y=r0+Q                                                                                    MemAddr_Cnt                                            if DMARequest jsr 785
-61a: swap           0         Y=0|r1                                   RES<=F                                                                      DataWTClock                 push 61b; jump 6bb
-61b: swap           0         Y=0|r2                                   RES<=F                                           MemAddr_Cnt                DataWTClock                 push 61c; jump 6bb
+61a: swap           0         Y=0|r1                                   RES<=F                                                                      DataWTClock                 jsr 6bb
+61b: swap           0         Y=0|r2                                   RES<=F                                           MemAddr_Cnt                DataWTClock                 jsr 6bb
 61c: swap           0         Y=r0+Q                                                                                    MemAddr_Cnt                                            if DMARequest jsr 785
-61d: swap           0         Y=0|r0                                   RES<=F                                                                      DataWTClock                 push 61e; jump 6bb
+61d: swap           0         Y=0|r0                                   RES<=F                                                                      DataWTClock                 jsr 6bb
 61e: mar_lo         0         r1=D|0  Y=r9                             RIdx<=F                                                                                                 
 61f: mar_hi         0         r2=D|0  Y=r1                             RES<=F                                                                                                  
 620: const:f        0         Y=~(D^r2)                                RES<=F                                                                      R[RIdx.L][CPL]<=RES LSB     
@@ -1830,14 +1830,14 @@ Op_1a:
 624: swap           0         Y=0&r0                                   PTIdx<=F                                                                    WorkAddr_LD_LO              jump 616
 625: R[RIdx]        0         Y=D|0                                    RES<=F                                                                      WorkAddr_LD_LO              jump 68d
 626: swap           0         Y=r0+Q                                   WorkAddr<=RES                                                               Addr_U/D<=1                 jump 658
-627: swap           0         Y=r0+Q                                   WorkAddr<=RES                                    WorkAddr_LD_HI             WorkAddr_LD_LO              push 628; jump 770
+627: swap           0         Y=r0+Q                                   WorkAddr<=RES                                    WorkAddr_LD_HI             WorkAddr_LD_LO              jsr 770
 628: swap           0         r9=D|0  Y=D|0                            RIdx<=F                                                                                                 if DMARequest jsr 785
 629: swap           0         r5=0|Q  Y=0|Q                                                                                            AFL.EN                                  if RegIdx & 1 jsr 722
-62a: swap           1         r9=D+0  Y=D+0                                                                                                                                    push 62b; jump 770
+62a: swap           1         r9=D+0  Y=D+0                                                                                                                                    jsr 770
 62b: swap           0         Y=0|Q                                    WorkAddr<=RES                                                   AFL.EN                                  jump 721
 62c: const:ef       0         Y=r9-D                                   RIdx<=F                                                                                                 
 62d: swap           1         r9=0+r9  Y=r9                            RIdx<=F                                                                                                 jump 560
-62e: swap           0         Y=r0+Q                                                                                                                                           push 62f; jump 68e
+62e: swap           0         Y=r0+Q                                                                                                                                           jsr 68e
 62f: swap           0         Y=r0+Q                                   WorkAddr<=RES                                                                                           jump 65f
 630: swap           0         Y=0|r5                                   RES<=F                                                                                                  if DMARequest jsr 785
 631: swap           0         Y=0|r5                                   PTIdx<=F                                                                                                
@@ -1860,7 +1860,7 @@ Op_1a:
 642: swap           0         r6=r5|r6  Y=r5|r6                                                                                                                                jump 638
 643: mar_lo         0         Y=D|0                                    RIdx<=F                                                                                                 switch pagetable??? jump (645, 645, 647, 647)
 644: R[RIdx]        0         Y=D|0                                    RES<=F                                                                      WorkAddr_LD_LO              jump 3ce
-645: const:71       0         Y=~(D^0)                                 RIdx<=F                                                         BusCycleEnd                             push 646; jump 68e
+645: const:71       0         Y=~(D^0)                                 RIdx<=F                                                         BusCycleEnd                             jsr 68e
 646: const:fc       0         Q=~(D^0) Y=~(D^0)                                                                                                                                jump 7
 647: swap           0         Y=0|r9                                   RIdx<=F                                                         BUS_DELAY                               jump 603
 648: swap           0         Y=r0+Q                                                                                    BeginRead                                              jump 101
@@ -1883,13 +1883,13 @@ Op_1a:
 659: swap           0         r5=0&r0  Y=0&r0                                                                                                                                  jump 56b
 65a: swap           0         Y=r0|r1                                  RES<=F                                                                                                  if DMARequest jsr 785
 65b: const:e3       0         r9=(~(D^0))>>1  Y=~(D^0) RAM7=ALU.S      RIdx<=F                                                                                                 
-65c: swap           0         Y=0|r9                                   RIdx<=F                                                                     R[RIdx.L][CPL]<=RES LSB     push 65d; jump 48e
+65c: swap           0         Y=0|r9                                   RIdx<=F                                                                     R[RIdx.L][CPL]<=RES LSB     jsr 48e
 65d: ILR?           0         r0=D|0  Y=D|0                                                                                                                                    switch flags(ZM) jump (655, 655, 657, 657)
 65e: swap           1         r0=0+r0  Y=0+r0                                                                                                                                  switch flags(ZM) jump (652, 653, 652, 653)
 65f: swap           0         Y=0&r0                                   RES<=F                                                                                                  jump 105
 660: swap           0         Y=r0+Q                                   CCR<={V=CCR.V,M=CCR.M,F=CCR.F,L=0}                                                                      
 661: const:7f       0         r9=r7-D  Y=r7-D                          WorkAddr<=RES                                                                                           
-662: swap           0         r4=0|r7  Y=0|r7                                                                           BeginRead                                              push 663; jump 10
+662: swap           0         r4=0|r7  Y=0|r7                                                                           BeginRead                                              jsr 10
 663: const:f7       0         Y=(~D)&r6                                                                                                AFL.EN                                  
 664: swap           0         Y=r0+Q                                                                                                                                           switch flags(ZM) jump (66d, 66d, 66f, 66f)
 665: swap           0         Y=r0+Q                                   CCR<={V=CCR.V,M=CCR.M,F=CCR.F,L=AFL.C}                                                                  jump 660|(STK0 & f); pop
@@ -1901,7 +1901,7 @@ Op_1a:
 66b: swap           0         Y=0|r9                                   RIdx<=F                                                                     R[RIdx]<=RES                jump 6fd
 66c: mar_lo         0         Y=D|0                                    RIdx<=F                                                         BUS_DELAY                               switch pagetable??? jump (66a, 66b, 66a, 66b)
 66d: const:7f       0         r9=~(D^0)  Y=~(D^0)                                                                                                                              
-66e: swap           0         r4=0|r7  Y=0|r7                                                                                                                                  push 66f; jump 659
+66e: swap           0         r4=0|r7  Y=0|r7                                                                                                                                  jsr 659
 66f: swap           0         Y=r0+Q                                                                                                               Addr_U/D<=0                 jump 6ce
 670: swap           0         r4=0|r8  Y=0|r8                                                                                                                                  switch flags(ZM) jump (7c2, 7c3, 7c2, 7c3)
 671: swap           0         r4=(0|r4)<<1 Q<<=1 Y=0|r4 Q0=0                                                                                                                   jump 6b1
@@ -1914,8 +1914,8 @@ Op_1a:
 678: swap           0         Y=r0+Q                                   WorkAddr<=RES                                    WorkAddr_LD_HI             WorkAddr_LD_LO              if DMARequest jsr 785
 679: swap           0         Y=r0+Q                                                                                                                                           jump 617
 67a: unused
-67b: swap           0         r4=0|r3  Y=0|r3                                                                           BeginRead                                              push 67c; jump 10
-67c: swap           0         r4=0|r3  Y=0|r3                                                                                                                                  push 67d; jump 569
+67b: swap           0         r4=0|r3  Y=0|r3                                                                           BeginRead                                              jsr 10
+67c: swap           0         r4=0|r3  Y=0|r3                                                                                                                                  jsr 569
 67d: swap           0         r4=0|r3  Y=0|r3                                                                                                                                  switch flags(ZM) jump (67e, 67f, 67e, 67f)
 67e: swap           0         Y=r0+Q                                                                                                                                           jump 516
 67f: swap           0         r0=~(r0^r0)  Y=~(r0^r0)                                                                                                                          jump 515
@@ -1928,7 +1928,7 @@ Op_1a:
 686: R[RIdx]        0         Y=D-0                                    RES<=F                                                          AFL.EN                                  jump 649
 687: mar_lo         0         Y=D|0                                    RES<=F                                                                                                  jump 6f9
 688: ILR?           0         r2=D|0  Y=D|0                                                                                                                                    switch flags(ZM) jump (689, 689, 68b, 68b)
-689: swap           0         Y=r0+Q                                                                                                               RUN<=1                      push 68a; jump 68e
+689: swap           0         Y=r0+Q                                                                                                               RUN<=1                      jsr 68e
 68a: swap           0         Y=r0+Q                                   WorkAddr<=RES                                                               ABT_LED<=0                  jump 6f6
 68b: swap           0         r0=D|0  Y=r1                             RIdx<=F                                                                                                 
 68c: const:c6       0         r0=(~D)&r0  Y=(~D)&r0                    CPL<=F                                                                                                  jump 689
@@ -1936,13 +1936,13 @@ Op_1a:
 68e: swap           0         Y=r0+Q                                                                                                                                   LSB     jump 60f
 68f: const:df       0         r5=~(D^0)  Y=~(D^0)                                                                                                                              
 690: const:80       0         r0=~(D^0)  Y=~(D^0)                                                                                                                              
-691: swap           0         r8=r0&r8  Y=r0&r8                                                                         BeginRead                                              push 692; jump 6ac
+691: swap           0         r8=r0&r8  Y=r0&r8                                                                         BeginRead                                              jsr 6ac
 692: swap           0         r1=0|Q  Y=0|Q                            WorkAddr<=RES                                    WorkAddr_LD_HI             WorkAddr_LD_LO              switch flags(ZM) jump (695, 695, 697, 697)
 693: const:bf       0         Y=D^r7                                   RES<=F                                                                                                  
 694: swap           0         Y=r0+Q                                   CCR<={V=RES.D7,M=RES.D6,F=RES.D5,L=CCR.L}                                                               jump 602
-695: swap           0         r7=0&r0  Y=0&r0                                                                           BeginRead                                              push 696; jump 6ac
+695: swap           0         r7=0&r0  Y=0&r0                                                                           BeginRead                                              jsr 6ac
 696: swap           0         r2=0|Q  Y=0|Q                            WorkAddr<=RES                                    WorkAddr_LD_HI             WorkAddr_LD_LO              switch flags(ZM) jump (699, 699, 69b, 69b)
-697: swap           0         Y=r0+Q                                                                                    BeginRead                                              push 698; jump 6ac
+697: swap           0         Y=r0+Q                                                                                    BeginRead                                              jsr 6ac
 698: swap           0         Y=r5^Q                                   WorkAddr<=RES                                    WorkAddr_LD_HI AFL.EN      WorkAddr_LD_LO              switch flags(ZM) jump (6c1, 6c1, 6c3, 6c3)
 699: swap           1         Y=r2-r1                                                                                                  AFL.EN                                  
 69a: swap           0         r3=r3-0  Y=r3-0                                                                                          AFL.EN                                  switch flags(ZM) jump (69c, 69d, 69e, 69f)
@@ -1960,7 +1960,7 @@ Op_1a:
 6a6: swap           0         r4=0|r8  Y=0|r8                                                                           WorkAddr_LD_HI                                         jump 6be
 6a7: swap           0         Y=r0+Q                                                                                                                                           switch flags(ZM) jump (6a9, 6a9, 6ab, 6ab)
 6a8: swap           0         Y=r0+Q                                                                                                                                   LSB     ret
-6a9: swap           0         Y=r0+Q                                                                                    BeginRead                                              push 6aa; jump 6ac
+6a9: swap           0         Y=r0+Q                                                                                    BeginRead                                              jsr 6ac
 6aa: swap           0         Y=r5^Q                                                                                                   AFL.EN                                  switch flags(ZM) jump (6a1, 6a1, 6a3, 6a3)
 6ab: swap           0         Y=r0+Q                                                                                                                                           jump 693
 6ac: swap           0         Q=r5+r5 Y=r5+r5                                                                                                                                  if REG_MMIO jsr 643
@@ -1979,11 +1979,11 @@ Op_1a:
 6b9: swap           0         Y=~(r8^r8)                               RES<=F                                                                      DMAAddrCtl<=0               
 6ba: dips?          0         Y=D|0                                    RIdx<=F                                                                     R[RIdx]<=RES                jump 7a0
 6bb: swap           0         Y=r0+Q                                                                                    BeginWrite                                             jump 6cc
-6bc: swap           0         r14=(0|r6)>>1  Y=0|r6 RAM7=ALU.S                                                                                                                 push 6bd; jump 59
+6bc: swap           0         r14=(0|r6)>>1  Y=0|r6 RAM7=ALU.S                                                                                                                 jsr 59
 6bd: swap           0         r1=~(0^r15)  Y=~(0^r15)                                                                                                                          jump 6ca
 6be: const:7f       0         r9=r8-D  Y=r8-D                          RIdx<=F                                                                                                 
-6bf: swap           0         Q=0&r0 Y=0&r0                            WorkAddr<=RES                                    WorkAddr_LD_HI             WorkAddr_LD_LO              push 6c0; jump 58e
-6c0: swap           1         Y=0-Q                                                                                                    AFL.EN                                  push 6c1; jump 665
+6bf: swap           0         Q=0&r0 Y=0&r0                            WorkAddr<=RES                                    WorkAddr_LD_HI             WorkAddr_LD_LO              jsr 58e
+6c0: swap           1         Y=0-Q                                                                                                    AFL.EN                                  jsr 665
 6c1: swap           0         r3=r3-0  Y=r3-0                                                                                          AFL.EN                                  switch flags(ZM) jump (6c5, 6c5, 6c7, 6c7)
 6c2: swap           0         r4=(0|r4)<<1 Q<<=1 Y=0|r4 Q0=0                                                                                                                   jump 606
 6c3: swap           0         Y=~(0^r0)                                RES<=F                                                                                                  jump 694
@@ -1998,13 +1998,13 @@ Op_1a:
 6cc: swap           0         Y=r0+Q                                                                                                               Addr_U/D<=0                 if RegOrPageOut jsr 9c
 6cd: swap           0         Y=r0+Q                                                                                                   BusCycleEnd                             ret
 6ce: const:7f       0         r9=~(D^0)  Y=~(D^0)                                                                       MemAddr_Cnt                                            
-6cf: swap           0         r4=0|r7  Y=0|r7                                                                                                                                  push 6d0; jump 63a
+6cf: swap           0         r4=0|r7  Y=0|r7                                                                                                                                  jsr 63a
 6d0: swap           0         Y=0|r1                                                                                                   AFL.EN                                  switch flags(ZM) jump (6d1, 6d1, 6d3, 6d3)
 6d1: swap           0         Y=r0+Q                                                                                                                                           switch flags(ZM) jump (6d2, 6d3, 6d2, 6d3)
 6d2: const:7f       0         Y=D|0                                                                                                    AFL.EN                                  
 6d3: swap           0         Y=r0+Q                                   CCR<={V=AFL.Z,M=AFL.S,F=CCR.F,L=CCR.L}                                                                  
 6d4: swap           0         Y=r0+Q                                                                                                                                           jump 5e4
-6d5: swap           0         Y=r0+Q                                                                                                               INT_ACK<=0                  push 6d6; jump 68e
+6d5: swap           0         Y=r0+Q                                                                                                               INT_ACK<=0                  jsr 68e
 6d6: swap           0         r9=r9+r9  Y=r9+r9                        RIdx<=F                                                                     RUN<=1                      jump 6dc
 6d7: const:f        0         r5=(~D)&r5  Y=(~D)&r5                                                                                                                            
 6d8: swap           0         r5=r4|r5  Y=r4|r5                                                                                                                                if DMARequest jsr 785
@@ -2014,7 +2014,7 @@ Op_1a:
 6dc: swap           0         Y=0|r0                                   RES<=F                                                                                                  if DMARequest jsr 785
 6dd: swap           0         Y=r0+Q                                   WorkAddr<=RES                                                               R[RIdx.L][CPL]<=RES         jump 6ed
 6de: swap           0         r9=D|0  Y=D|0                                                                                                                                    if DMARequest jsr 785
-6df: swap           0         r4=0|r3  Y=0|r3                                                                                                                                  push 6e0; jump 63a
+6df: swap           0         r4=0|r3  Y=0|r3                                                                                                                                  jsr 63a
 6e0: swap           0         Y=0|r1                                                                                                   AFL.EN                                  switch flags(ZM) jump (6e1, 6e1, 6e3, 6e3)
 6e1: swap           0         Y=r0+Q                                                                                                                                           switch flags(ZM) jump (6e6, 6e7, 6e6, 6e7)
 6e2: R[RIdx.L][CPL] 0         r2=D|0  Y=r2                             RES<=F                                                                      R[RIdx.L][CPL]<=RES LSB     jump 47
@@ -2032,13 +2032,13 @@ Op_1a:
 6ee: R[RIdx]        0         r1=D|0  Y=D|0                            RES<=F                                                                                                  if DMARequest jsr 785
 6ef: swap           0         r6=(~r0)&r6  Y=(~r0)&r6                  CCR<={V=RES.D7,M=RES.D6,F=RES.D5,L=RES.D4}                                                              
 6f0: swap           0         Y=0|r1                                   PTIdx<=F                                                                                                jump 73f
-6f1: swap           0         r9=D|0  Y=D|0                                                                                                                                    push 6f2; jump 659
+6f1: swap           0         r9=D|0  Y=D|0                                                                                                                                    jsr 659
 6f2: swap           0         r5=~(r5^r5)  Y=~(r5^r5)                                                                                                                          jump 6de
 6f3: swap           0         r5=0&r5  Y=0&r5                                                                                                                                  jump 6de
 6f4: swap           0         r4=(~D)&r7  Y=(~D)&r7                                                                                    AFL.EN                                  switch flags(ZM) jump (6f1, 6f1, 6f3, 6f3)
 6f5: swap           0         Y=r0+Q                                                                                                                                           jump 73a
 6f6: swap           0         Y=0|r2                                   CPL<=F                                           BeginRead                                              jump 609
-6f7: CCR            0         r4=~(r4^r4)  Y=~(r4^r4)                                                                   Swap                                                   push 6f8; jump 1e1
+6f7: CCR            0         r4=~(r4^r4)  Y=~(r4^r4)                                                                   Swap                                                   jsr 1e1
 6f8: swap           0         Y=r2&r0                                                                                                  AFL.EN                                  jump 688
 6f9: mar_hi         0         r2=D^r2  Y=D^r2                                                                                                                          LSB     jump 70a
 6fa: unused
@@ -2050,7 +2050,7 @@ Op_1a:
 700: swap           0         Y=r7+Q                                   RES<=F                                                          AFL.EN                                  if DMARequest jsr 785
 701: swap           1         r7=0+Q  Y=0+Q                                                                                                        WorkAddr_LD_LO              jump 768
 702: bus_read       0         r1=D+r1  Y=D+r1                                                                           BeginRead                                              jump 7db; pop
-703: swap           1         r1=0+r1  Y=r7                            RES<=F                                           BeginWrite     AFL.EN                                  push 704; jump 6a8
+703: swap           1         r1=0+r1  Y=r7                            RES<=F                                           BeginWrite     AFL.EN                                  jsr 6a8
 704: swap           AFL.C     r2=0+r2  Y=0+r2                                                                                          BusCycleEnd                             jump 778
 705: swap           0         Y=r0+Q                                                                                                                                           if REG_MMIO jsr 633
 706: swap           0         Y=r0+Q                                                                                    MemAddr_Cnt    BusCycleEnd                             if DMARequest jsr 785
@@ -2062,7 +2062,7 @@ Op_1a:
 70c: swap           0         Y=r0+Q                                                                                    BeginWrite                                             jump 7e9
 70d: swap           0         Y=r0+Q                                                                                    BeginRead                                              jump 7f6
 70e: swap           0         Y=r0+Q                                                                                                   BusCycleEnd                             jump 626
-70f: swap           0         r0=~(0^r0)  Y=~(0^r0)                                                                                    AFL.EN                                  push 710; jump 48c
+70f: swap           0         r0=~(0^r0)  Y=~(0^r0)                                                                                    AFL.EN                                  jsr 48c
 710: swap           0         Q=0|r4 Y=0|r4                                                                                                                                    switch flags(ZM) jump (7cd, 7cd, 7cf, 7cf)
 711: unused
 712: swap           0         Y=r0+Q                                   WorkAddr<=RES                                                                                           jump 646
@@ -2071,13 +2071,13 @@ Op_1a:
 715: CCR            0         r0=(~D)&r15  Y=(~D)&r15                                                                                                                          jump 6bc
 716: swap           0         Y=r0+Q                                                                                                                                           jump 719
 717: const:7f       0         r9=~(D^0)  Y=~(D^0)                                                                                                                              
-718: swap           0         r4=0|r8  Y=0|r8                                                                                          AFL.EN                                  push 719; jump 659
+718: swap           0         r4=0|r8  Y=0|r8                                                                                          AFL.EN                                  jsr 659
 719: swap           0         Y=r0+Q                                   WorkAddr<=RES                                                                                           jump 69f
 71a: swap           0         Y=r0+Q                                                                                                                                           switch flags(ZM) jump (716, 717, 716, 717)
 71b: R[RIdx.L][CPL] 0         Y=D+r1                                   RES<=F                                           BeginRead      AFL.EN                                  jump 201
 71c: swap           0         r9=D&r0  Y=D&r0                          RIdx<=F                                                                                                 if REG_MMIO jsr 633
 71d: swap           0         r1=D|0  Y=D|0                                                                             Swap                                           LSB     jump 7d0
-71e: swap           0         Y=r0+Q                                                                                                               RUN<=0                      push 71f; jump 48e
+71e: swap           0         Y=r0+Q                                                                                                               RUN<=0                      jsr 48e
 71f: const:f7       0         r0=~(D^0)  Y=~(D^0)                                                                                                                              
 720: const:f5       0         r1=~(D^0)  Y=~(D^0)                                                                                                                              jump 72a
 721: swap           0         Y=0|r5                                                                                                   AFL.EN                                  jump 713
@@ -2104,7 +2104,7 @@ Op_1a:
 736: swap           0         Y=r0+Q                                                                                                               R[RIdx]<=RES                jump 101
 737: swap           0         r3=~(r3^r3)  Y=~(r3^r3)                                                                                                                          switch flags(ZM) jump (739, 739, 73b, 73b)
 738: R[RIdx]        0         Y=D|0                                    RES<=F                                           WorkAddr_LD_HI                                         jump 25d
-739: swap           0         r4=~(r4^r4)  Y=~(r4^r4)                                                                                                                          push 73a; jump 1e1
+739: swap           0         r4=~(r4^r4)  Y=~(r4^r4)                                                                                                                          jsr 1e1
 73a: dips?          0         Y=D&r1                                                                                                   AFL.EN                                  jump 6fb
 73b: swap           0         Y=r0+Q                                                                                                                                           jump 71f
 73c: dips?          0         r2=D&r1  Y=D&r1                                                                                          AFL.EN                                  switch flags(ZM) jump (735, 735, 737, 737)
@@ -2125,7 +2125,7 @@ Op_1a:
 74b: swap           0         Y=r0+Q                                                                                    BeginRead                                              jump 81
 74c: swap           0         r5=0|r1  Y=0|r1                                                                                                                                  if DMARequest jsr 785
 74d: swap           0         r7=0|r2  Y=0|r2                                                                                                                                  jump 51a
-74e: const:71       0         Y=~(D^0)                                 RIdx<=F                                                                                                 push 74f; jump 68e
+74e: const:71       0         Y=~(D^0)                                 RIdx<=F                                                                                                 jsr 68e
 74f: swap           0         Y=r0+Q                                                                                                                                           jump 1d6
 750: swap           AFL.C     Y=0+r5                                   RES<=F                                                                      WorkAddr_LD_LO              jump 760
 751: swap           0         Y=r0+Q                                                                                                                                           switch flags(ZM) jump (755, 755, 757, 757)
@@ -2139,7 +2139,7 @@ Op_1a:
 759: swap           0         Y=0|r5                                                                                                   AFL.EN                                  jump 7b4
 75a: unused
 75b: swap           0         Y=r0+Q                                                                                                                                           jump 5d4
-75c: swap           0         Y=r0+Q                                                                                    BeginRead                                              push 75d; jump 7eb
+75c: swap           0         Y=r0+Q                                                                                    BeginRead                                              jsr 7eb
 75d: swap           0         r7=r7-0  Y=r7-0                                                                                          AFL.EN      Addr_U/D<=1                 switch flags(ZM) jump (751, 751, 753, 753)
 75e: swap           0         Y=r0+Q                                                                                                   BUS_DELAY                               
 75f: swap           0         Y=r0+Q                                                                                                   BusCycleEnd                             jump 74e
@@ -2163,7 +2163,7 @@ Op_1a:
 771: const:8        0         Y=D&r2                                                                                                   AFL.EN                                  
 772: swap           0         Y=0|r3                                   RIdx<=F                                                                                                 push 773; switch flags(ZM) jump (779, 779, 77b, 77b)
 773: swap           0         Y=0|r9                                   RIdx<=F                                                                     PTRAM<=RES                  if RegIdx & 1 jsr 732
-774: swap           1         r1=0+r1  Y=r7                            RES<=F                                           BeginRead      AFL.EN                                  push 775; jump 6a8
+774: swap           1         r1=0+r1  Y=r7                            RES<=F                                           BeginRead      AFL.EN                                  jsr 6a8
 775: swap           0         Y=r0+Q                                                                                                   BusCycleEnd                             jump 796
 776: const:80       0         r7=D|r7  Y=D|r7                                                                                                                                  ret
 777: const:7f       0         r7=D&r7  Y=D&r7                                                                                                                                  ret
@@ -2180,7 +2180,7 @@ Op_1a:
 782: const:f        0         r15=~(D^0)  Y=~(D^0)                                                                                                                             jump 780
 783: bus_read       0         Q=D|0 Y=D|0                              RES<=F                                                                                                  if MemFault jsr 7a6
 784: swap           0         Y=r0+Q                                                                                    MemAddr_Cnt                R[RIdx.L][CPL]<=RES         ret
-785: mar_lo         0         r15=D|0  Y=r6                            PTIdx<=F                                                                                                push 786; jump 5bd
+785: mar_lo         0         r15=D|0  Y=r6                            PTIdx<=F                                                                                                jsr 5bd
 786: swap           0         Y=r0+Q                                                                                                               DMAAddrCtl<=1               jump 601
 787: swap           0         Y=r0+Q                                                                                                               Addr_U/D<=1                 jump 714; pop
 788: swap           0         Y=r0+Q                                                                                    MemAddr_Cnt                                            ret
@@ -2228,10 +2228,10 @@ Op_1a:
 7b2: const:f        0         Y=(~D)&r0                                                                                                AFL.EN                                  jump 7b0
 7b3: const:e1       0         r9=~(D^0)  Y=~(D^0)                      RIdx<=F                                                                                                 jump 71e
 7b4: swap           0         Y=r0+Q                                                                                                                                           switch flags(ZM) jump (7b5, 7b5, 7b7, 7b7)
-7b5: swap           0         Y=0&r0                                   RIdx<=F                                                                                                 push 7b6; jump 48e
+7b5: swap           0         Y=0&r0                                   RIdx<=F                                                                                                 jsr 48e
 7b6: const:54       0         Y=D-0                                    RIdx<=F                                                                                                 jump 7ab
 7b7: const:4f       0         r0=~(D^0)  Y=~(D^0)                                                                                                                              
-7b8: swap           0         r5=0|r0  Y=0|r0                                                                           BeginRead                                              push 7b9; jump 7eb
+7b8: swap           0         r5=0|r0  Y=0|r0                                                                           BeginRead                                              jsr 7eb
 7b9: swap           0         Y=~(0^r5)                                                                                                AFL.EN      Addr_U/D<=1                 jump 742
 7ba: swap           0         Y=0&r0                                   RES<=F                                                                                                  jump 105
 7bb: swap           0         Y=0|r5                                   RES<=F                                           WorkAddr_LD_HI                                         jump 7e4
@@ -2240,7 +2240,7 @@ Op_1a:
 7be: swap           0         Y=r0+Q                                                                                    MemAddr_Cnt    BusCycleEnd                             if DMARequest jsr 785
 7bf: bus_read       0         r8=D|0  Y=D|0                                                                                                                                    jump 7d8
 7c0: const:7f       0         r9=~(D^0)  Y=~(D^0)                                                                                                                              
-7c1: swap           0         r5=~(r5^r5)  Y=~(r5^r5)                                                                                                                          push 7c2; jump 62c
+7c1: swap           0         r5=~(r5^r5)  Y=~(r5^r5)                                                                                                                          jsr 62c
 7c2: swap           0         Y=0|r0                                                                                                   AFL.EN                                  jump 71a
 7c3: swap           0         r1=0&r0  Y=0&r0                                                                                                                                  jump 7c0
 7c4: swap           0         Y=0&r0                                   RIdx<=F                                                                     R[RIdx.L][CPL]<=RES LSB     jump 7c6
@@ -2261,10 +2261,10 @@ Op_1a:
 7d3: bus_read       0         r2=D+r2  Y=D+r2                                                                                          AFL.EN                                  switch flags(ZM) jump (7de, 7df, 7de, 7df)
 7d4: swap           0         Y=r0+Q                                                                                                                                           jump 782
 7d5: swap           0         Y=0|r0                                   RES<=F                                                                      DataWTClock                 jump 7d6; pop
-7d6: swap           0         Y=r0+Q                                                                                    BeginWrite                 Addr_U/D<=0                 push 7d7; jump 5d9
+7d6: swap           0         Y=r0+Q                                                                                    BeginWrite                 Addr_U/D<=0                 jsr 5d9
 7d7: swap           0         Y=r0+Q                                                                                                                                           jump 5d5; pop
 7d8: swap           0         Y=r0+Q                                                                                                                                           if MemFault jsr 466
-7d9: swap           0         r0=~(0^r0)  Y=~(0^r0)                                                                                    AFL.EN                                  push 7da; jump 44e
+7d9: swap           0         r0=~(0^r0)  Y=~(0^r0)                                                                                    AFL.EN                                  jsr 44e
 7da: swap           0         Y=r0+Q                                                                                                                                           jump 710
 7db: swap           0         Y=r0+Q                                                                                                                                           if REG_MMIO jsr 633
 7dc: swap           0         Y=r0+Q                                                                                    MemAddr_Cnt    BusCycleEnd                             if DMARequest jsr 785
