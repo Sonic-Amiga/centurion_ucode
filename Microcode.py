@@ -17,7 +17,10 @@ class MicroCode(object):
         with open('CodeROM.txt') as f:
             lines = f.readlines()
             self.code = [int(line, 16) for line in lines]
+            self.visited = set()
             self.selects = defaultdict(int)
+
+        self.entries = [0]
         
         # Parse opcode map and generate labels
         with open('CPU-6309.txt') as f:
@@ -28,18 +31,54 @@ class MicroCode(object):
                 # Two low nibbles come from AR, which comes from the map ROM;
                 # the third nibble is hardcoded to 0x1 (see addr 102)
                 addr += 0x100
-                if not addr in self.labels:
-                    self.labels[addr] = []
-                self.labels[addr].append(f'Op_{opcode:02x}')
+                self.addLabel(addr, f'Op_{opcode:02x}')
+                self.entries.append(addr)
+
+    def addLabel(self, addr, text):
+        if not addr in self.labels:
+            self.labels[addr] = []
+        self.labels[addr].append(text)
 
     def getBits(self, word, start, size):
         return (word >> start) & (~(-1 << size))
 
+    def getNextNotVisited(self, addr):
+        for i in range(addr, len(self.code)):
+            if not i in self.visited:
+                return i;
+        return None
+
+    def disassembleEntries(self):
+        while len(self.entries) > 0:
+            addr = self.entries.pop(0)
+
+            # Do not print empty lines for already visited entries
+            if addr in self.visited:
+                continue
+            while not (addr is None or addr in self.visited):
+                self.visited.add(addr)
+                addr = self.disassembleOne(addr, self.code[addr])
+            print()
+
     def disassemble(self):
         print('Addr DP             ALUCIn    ALUOp                                    F                                                BusControl     BusExtra    WriteCtl            R16_LSB SeqOp')
-        for addr, word in enumerate(self.code):
-            self.disassembleOne(addr, word)
-        print()
+        # First disassemble all known entry points, they can also have labels
+        self.disassembleEntries()
+
+        # Some jumps are dynamic and calculated at runtime, so we still have larde
+        # portion of the code we haven't seen. Try to find the first unseen microword
+        # and restart the disassembly from it. Repeat till we've been everywhere        
+        addr = 1
+        while True:
+            addr = self.getNextNotVisited(addr)
+            if addr is None:
+                break
+            self.addLabel(addr, f'Unknown_entry_{addr:03x}')
+            self.entries.append(addr)
+            self.disassembleEntries()
+            # We have definitely visited 'addr', so resume from the next one
+            addr = addr + 1
+                
         print('Mux select distribution')
         for name, value in self.selects.items():
             print(f'{name:3x}: {value}')
@@ -50,7 +89,7 @@ class MicroCode(object):
                 print(l + ':')
         if word == 0:
             print(f'{addr:3x}: unused')
-            return
+            return None
 
         # DP bus control
         d2d3    = self.getBits(word, 0, 4)
@@ -97,9 +136,8 @@ class MicroCode(object):
         s1s0 = (s21 << 9) | (sh0 << 8) | (s11 << 5) | (sh0 << 4) | seq0_s
 
         self.selects[s1s0] += 1
-        next = addr + 1
 
-        seqCode = self.getSeqCode(next, dest, s1s0, fe, pup, case_, cond, jsr)
+        seqCode, next = self.getSeqCode(addr + 1, dest, s1s0, fe, pup, case_, cond, jsr)
         dpBus   = self.getDPBus(d2d3, dest, mw_a7)
         aluCIn  = self.getALUCIn(u_f6)
         aluCode = self.getALUCode(aluSrc, aluOp, aluDest, aluA, aluB, u_f6)
@@ -110,14 +148,35 @@ class MicroCode(object):
         msb     = 'LSB' if r16_lsb else ''
 
         print(f'{addr:3x}: {dpBus:14s} {aluCIn:9s} {aluCode:40s} {fBus:48s} {bus:14s} {extra:11s} {write:19s} {msb:7s} {seqCode}')
+        return next
+
+    # Collect our switch targets, except #0, and insert them into todo list
+    # Insertion happens in the beginning in reverse order, so that branches would be
+    # disassembled immediately after our routine ends
+    def getSwitchTargets(self, target, step):
+        for i in range(0, 3):
+            # Reverse our range: 3 2 1
+            # Skip 0 because our caller will try to continue from there
+            i = 3 - i
+            addr = target|(step * i)
+            self.entries.insert(0, addr)
+
+    def getRange(self, base, mask):
+        targets = set()
+        for i in range(0, len(self.code)):
+            addr = i & mask
+            targets.add(base | addr)
+        for addr in sorted(targets):
+            self.entries.append(addr)
 
     def getSeqCode(self, next, dest, s1s0, fe, pup, case_, cond, jsr):
         if jsr == 0:
             JSR_COND = ['Cycle', 'RegIdx & 0x11 == 0', 'RegIdx & 1', 'REG_MMIO', 'RegOrPageOut', 'DMARequest', 'MemFault', 'MultiINT']
             cond = JSR_COND[dest & 7]
             jsr_ = f'if {cond} jsr {dest:x}'
+            self.entries.append(dest)
             if s1s0 == 0x000:
-                return jsr_
+                return jsr_, next
             jsr_ += ' else '
         else:
             jsr_ = ''
@@ -137,6 +196,7 @@ class MicroCode(object):
                 jump = 'ret' # jump STK0; pop
             else:
                 jump = 'jump STK0'
+            next = None
         else:
             ar_mask    = 0;
             pop_mask   = 0;
@@ -161,8 +221,10 @@ class MicroCode(object):
                 if push != '':
                     jump = f'jsr {target:x}' # push; jmp
                     push = ''
+                    self.entries.append(target)
                 else:
                     jump = f'jump {target:x}'
+                    next = target
             elif const_mask & 0x00f == 0:
                 # Since the switch is OR-based, we need the less significant 4 bits
                 # to have a known base value, so we always take them from a constant
@@ -170,36 +232,52 @@ class MicroCode(object):
             # The first 4 branches use OR lines 0 and 1 via U_J13
             elif cond == 0b1100:
                 jump = f'switch flags(ZM) jump ({target|0:x}, {target|1:x}, {target|2:x}, {target|3:x})'
+                self.getSwitchTargets(target, 1)
+                next = target
             elif cond == 0b1101:
                 jump = f'switch flags(VH) jump ({target|0:x}, {target|1:x}, {target|2:x}, {target|3:x})'
+                self.getSwitchTargets(target, 1)
+                next = target
             elif cond == 0b1110:
                 jump = f'switch pagetable??? jump ({target|0:x}, {target|1:x}, {target|2:x}, {target|3:x})'
+                self.getSwitchTargets(target, 1)
+                next = target
             # These branches use OR lines 2 and 3 via U_K13
             elif cond == 0b0011:
                 jump = f'switch flags(IL) jump ({target|0:x}, {target|4:x}, {target|8:x}, {target|12:x})'
+                self.getSwitchTargets(target, 4)
+                next = target
             elif cond == 0b0111:
                 jump = f'switch interrupts??? jump ({target|0:x}, {target|4:x}, {target|8:x}, {target|12:x})'
+                self.getSwitchTargets(target, 4)
+                next = target
             elif cond == 0b1011:
                 jump = f'switch dma??? jump ({target|0:x}, {target|4:x}, {target|8:x}, {target|12:x})'
+                self.getSwitchTargets(target, 4)
+                next = target
             # Combined switches don't make sense
             else:
                 jump += f'!WARN bad switch {cond:x}'
 
             if pop_mask != 0:
                 jump += f'|(STK0 & {pop_mask:x})'
+#                self.getRange(next, pop_mask)
+                next = None
             if ar_mask != 0:
                 jump += f'|(AR & {ar_mask:x})'
+#                self.getRange(next, ar_mask)
+                next = None
 
             if fe == 0 and pup == 0:
                 jump += '; pop'
 
         op = jsr_ + push
         if op == '':
-            return jump
+            return jump, next
         if jump == '':
-            return op
+            return op, next
         sep = '; ' if push else ''
-        return op + sep + jump
+        return op + sep + jump, next
 
     def getDPBus(self, d2d3, dest, mw_a7):
         # 'dest' is also used for constants, but these are inverted
