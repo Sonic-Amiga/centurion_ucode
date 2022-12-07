@@ -61,7 +61,7 @@ class MicroCode(object):
             print()
 
     def disassemble(self):
-        print('Addr DP             ALUCIn    ALUOp                                    F                                                BusControl     BusExtra    WriteCtl            R16_LSB SeqOp')
+        self.printHeader()
         # First disassemble all known entry points, they can also have labels
         self.disassembleEntries()
 
@@ -147,8 +147,23 @@ class MicroCode(object):
         write   = self.getWriteControl(k11, aluB, mw_a7)
         msb     = 'LSB' if r16_lsb else ''
 
-        print(f'{addr:3x}: {dpBus:14s} {aluCIn:9s} {aluCode:40s} {fBus:48s} {bus:14s} {extra:11s} {write:19s} {msb:7s} {seqCode}')
+        print(f'{addr:3x}: {dpBus:19s} {aluCIn:9s} {aluCode:40s} {fBus:51s} {bus:11s} {extra:11s} {write:20s} {msb:7s} {seqCode}')
         return next
+
+    def printHeader(self):
+        # Reuse formatting string from above, this makes it easier to adjust it
+        addr    = 'Addr'
+        dpBus   = 'DP'
+        aluCIn  = 'ALUCIn'
+        aluCode = 'ALUOp'
+        fBus    = 'F'
+        bus     = 'BusControl'
+        extra   = 'BusExtra'
+        write   = 'WriteCtl'
+        msb     = 'R16_LSB'
+        seqCode = 'Seq'
+        print(f'{addr:4s} {dpBus:19s} {aluCIn:9s} {aluCode:40s} {fBus:51s} {bus:11s} {extra:11s} {write:20s} {msb:7s} {seqCode}')
+
 
     # Collect our switch targets, except #0, and insert them into todo list
     # Insertion happens in the beginning in reverse order, so that branches would be
@@ -264,7 +279,7 @@ class MicroCode(object):
 #                self.getRange(next, pop_mask)
                 next = None
             if ar_mask != 0:
-                jump += f'|(AR & {ar_mask:x})'
+                jump += f'|(SAR & {ar_mask:x})'
 #                self.getRange(next, ar_mask)
                 next = None
 
@@ -283,33 +298,33 @@ class MicroCode(object):
         # 'dest' is also used for constants, but these are inverted
         constant = ~dest & 0xff
         if d2d3 == 0:
-            return f'swap'
+            return 'READ.SWP'
         elif d2d3 == 1:
-            return self.getRegName(mw_a7)
+            return 'READ.' + self.getRegName(mw_a7)
         elif d2d3 == 2:
-            return f'mar_hi'
+            return 'READ.MAR.H'
         elif d2d3 == 3:
-            return f'mar_lo'
+            return 'READ.MAR.L'
         elif d2d3 == 4:
-            return f'swap'
+            return 'READ.SWP  '
         elif d2d3 == 5:
-            return self.getRegName(mw_a7)
+            return 'READ.' + self.getRegName(mw_a7)
         elif d2d3 == 6:
-            return f'mar_hi'
+            return 'READ.MAR.H'
         elif d2d3 == 7:
-            return f'mar_lo'
+            return 'READ.MAR.L'
         elif d2d3 == 8:
-            return ''
+            return 'READ.PF'
         elif d2d3 == 9:
-            return 'CCR'
+            return 'READ.CCR'
         elif d2d3 == 10:
-            return 'bus_read'
+            return 'READ.D.BUS'
         elif d2d3 == 11:
-            return 'ILR?'
+            return 'READ.MSR'
         elif d2d3 == 12:
-            return 'dips?'
+            return 'READ.INR'
         elif d2d3 == 13:
-            return f'const:{constant:x}'
+            return f'READ.CONST:{constant:02x}'
         elif d2d3 == 14:
             return ''
         elif d2d3 == 15:
@@ -368,38 +383,38 @@ class MicroCode(object):
             link  = self.getLinkSel(link_enable, link_sel)
             fault = self.getFaultSel(fault_enable, fault_sel)
 
-            return 'CCR<={' + f'V={zero},M={sign},F={fault},L={link}' + '}'
+            return 'LOAD.CCR{' + f'V={zero},M={sign},F={fault},L={link}' + '}'
 
-        RESULT_MAP = ['', 'RES<=F', 'RIdx<=F', 'CPL<=F', 'PTIdx<=F', 'WorkAddr<=RES', 'AR<=F', 'CCR_EN']
+        RESULT_MAP = ['        ', "LOAD.RR ", "LOAD.RIR", "LOAD.ILR", "LOAD.MAP", "LOAD.MAR", "LOAD.SAR"]
         return RESULT_MAP[val]
 
     # U_F6
     def getALUCIn(self, u_f6):
-        CARRY_MAP = ['0', '1', 'AFL.C', '0']
+        CARRY_MAP = ['0', '1', 'FLR.C', '0']
         return CARRY_MAP[u_f6]
 
     # U_H6
     def getShiftSel(self, shift_up, u_f6):
         if shift_up:
             # Left shift, select which signal will be shifted in at LSB
-            SHIFT_Q0_MAP = ['0', 'AFL.C', 'ALU.S', '1']
+            SHIFT_Q0_MAP = ['0', 'FLR.C', 'ALU.S', '1']
             val = SHIFT_Q0_MAP[u_f6]
             signal = 'Q0'
         else:
             # Right shift, select which signal will be shifted in at MSB
-            SHIFT_RAM7_MAP = ['ALU.S', 'AFL.C', 'ALU.Q0', 'ALU.C']
+            SHIFT_RAM7_MAP = ['ALU.S', 'FLR.C', 'ALU.Q0', 'ALU.C']
             val = SHIFT_RAM7_MAP[u_f6]
             signal = 'RAM7'
         return f'{signal}={val}'
 
     # U_J12.a
     def getSignSel(self, sel):
-        SIGN_TABLE = ['CCR.M', 'AFL.S', 'RES.D6', 'AFL.S']
+        SIGN_TABLE = ['CCR.M', 'FLR.S', 'RR.D6', 'FLR.S']
         return SIGN_TABLE[sel]
 
     # U_J12.b
     def getZeroSel(self, sel):
-        ZERO_TABLE = ['CCR.V', 'AFL.Z', 'RES.D7', 'AFL.Z&AFL.LZ']
+        ZERO_TABLE = ['CCR.V', 'FLR.Z', 'RR.D7', 'FLR.Z&FLR.LZ']
         return ZERO_TABLE[sel]
 
     # U_J10
@@ -407,7 +422,7 @@ class MicroCode(object):
         if enable:
             return '0'
         else:
-            LINK_TABLE = ['CCR.L', '/CCR.L', 'AFL.C', '1', 'RES.D4', 'ALU.SHIFT_RAM7', 'ALU_SHIFT_RAM0_Q7', 'ALU.SHIFT_Q0']
+            LINK_TABLE = ['CCR.L', '/CCR.L', 'FLR.C', '1', 'RR.D4', 'ALU.SHIFT_RAM7', 'ALU_SHIFT_RAM0_Q7', 'ALU.SHIFT_Q0']
             return LINK_TABLE[sel]
 
     #U_J11
@@ -415,47 +430,47 @@ class MicroCode(object):
         if enable:
             return '0'
         else:
-            FAULT_TABLE = ['RES.D5', '1', 'CCR.F', 'AFL.OVER']
+            FAULT_TABLE = ['RR.D5', '1', 'CCR.F', 'FLR.OVER']
             return FAULT_TABLE[sel]
         
     # U_C14
     def getRegName(self, mw_a7):
         if mw_a7:
-            return 'R[RIdx.L][CPL]'
+            return 'RF[RIR.L][ILR]'
         else:
-            return 'R[RIdx]'
+            return 'RF[RIR]'
 
     # U_H11
     def getBusCtl(self, h11):
-        BUS_MAP = ['', 'BeginRead', 'BeginWrite', 'WorkAddr_LD_HI', 'WorkAddr_Cnt', 'MemAddr_Cnt', 'MAPROM_SEL', 'Swap']
+        BUS_MAP = ['', 'BUS.RD', 'BUS.WT', 'LOAD.WAR.H', 'INC.WAR', 'INC.MAR', 'MAPROM.EN', 'LOAD.SWP']
         return BUS_MAP[h11]
 
     # U_E7
     def getBusExtra(self, u_e7):
-        EXTRA_F_MAP = ['', 'BUS_DELAY', 'AFL.EN', 'BusCycleEnd']
+        EXTRA_F_MAP = ['', 'BUS.ABT', 'LOAD.FLR', 'BUS.WAIT']
         return EXTRA_F_MAP[u_e7]
 
     # U_K11, U_K12C, U_H13B
     def getWriteControl(self, k11, aluB, mw_a7):
         if k11 == 2: # U_M13
-            M13_MAP = ['SysCtl0_DMA', 'SysCtl1_DMA', 'RTC_INT_EN', 'PROM_Disable', 'RUN', '/RTC_INT_Reset', 'ABT_LED', 'INT_ACK']
+            M13_MAP = ['CTL0.DMA', 'CTL1.DMA', 'TIMER', 'MAPROM.CE1', 'RUN', '/TIMER.RES', 'ABORT', 'IACK']
             return self.getDemuxedControl(M13_MAP, aluB)
         if k11 == 3: # U_F11
-            F11_MAP = ['INT_ENABLE', '/AddrHToSys', '/AddrCount_EN', 'Addr_U/D', 'DMAAddrCtl', 'ParitySel', 'MemFault_EN', 'DMAEnable']
+            F11_MAP = ['INT', '/ABE', '/INC.DMA', 'DIR', '/DMA', 'PARO', 'PE.EN', 'DMA.EN']
             return self.getDemuxedControl(F11_MAP, aluB)
         if k11 == 4: # Write from result register to register file
             reg = self.getRegName(mw_a7)
-            return f'{reg}<=RES'
+            return f'WRITE.{reg}'
 
         # M13, F11 and REGS are handled above
-        WRITE_CONTROL = ['', 'DMAEnd', 'M13', 'F11', 'REGS', 'PTRAM<=RES', 'WorkAddr_LD_LO', 'DataWTClock']
+        WRITE_CONTROL = ['', 'DMA.RESET', 'M13.EN?', 'F11.EN?', 'WRITE.RF', 'WRITE.PF', 'LOAD.WAR.L', 'LOAD.DBR']
         # TODO: BusCtl uses numeric value from aluB (U_F11)
         return WRITE_CONTROL[k11]
 
     def getDemuxedControl(self, map_, aluB):
-        bit  = aluB & 1
+        bit  = '+' if aluB & 1 == 1 else '-'
         line = map_[(aluB >> 1) & 7]
-        return f'{line}<={bit}'
+        return f'{line}{bit}'
 
 if __name__ == '__main__':
     mc = MicroCode()
